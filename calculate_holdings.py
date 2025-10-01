@@ -2,7 +2,7 @@ from market_object import MarketObject
 from portfolio import Portfolio
 import numpy as np
 import pandas as pd
-
+#
 def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     # Apply sector restrictions if enabled
     if restrict_fossil_fuels:
