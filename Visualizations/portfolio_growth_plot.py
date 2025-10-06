@@ -13,6 +13,12 @@ def plot_portfolio_growth(years, portfolio_values, factor_set_name="Selected Fac
         factor_set_name (str): Name of the factor set for labeling
         restrict_fossil_fuels (bool): Whether fossil fuel companies were excluded
     """
+    
+    if selected_factors is None:
+        factor_set_name = "Selected Factors"
+    else:
+        factor_set_name = ", ".join(selected_factors)
+
     plt.figure(figsize=(10, 6))
     plt.plot(years, portfolio_values, marker='o', linestyle='-', color='b', label=f'Portfolio ({factor_set_name})')
 
@@ -23,6 +29,4 @@ def plot_portfolio_growth(years, portfolio_values, factor_set_name="Selected Fac
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    
-    plt.show()  # <- ensures the plot appears in Colab and scripts
-
+    plt.show()
