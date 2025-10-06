@@ -1,6 +1,5 @@
 # portfolio_growth_plot.py
 
-# portfolio_growth_plot.py
 
 import matplotlib.pyplot as plt
 
