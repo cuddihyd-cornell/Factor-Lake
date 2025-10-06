@@ -42,7 +42,13 @@ def main():
     )
 
     ### Plot portfolio growth with fossil fuel restriction status ###
-    plot_portfolio_growth(results, restrict_fossil_fuels=restrict_fossil_fuels)
+    plot_portfolio_growth(
+    results['years'],
+    results['portfolio_values'],
+    factor_set_name="User Selected Factors",
+    restrict_fossil_fuels=restrict_fossil_fuels
+    )
+
 
 if __name__ == "__main__":
     main()
