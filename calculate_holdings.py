@@ -65,7 +65,7 @@ def calculate_growth(portfolio, next_market, current_market, verbosity=0):
 
 def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=None, restrict_fossil_fuels=False):
     aum = initial_aum
-    years = []
+    years = [start_year] # Start with the initial year
     portfolio_returns = []  # Store yearly returns for Information Ratio
     benchmark_returns = []  # Store benchmark returns for comparison
     portfolio_values = [aum]  # track total AUM over time
@@ -102,10 +102,8 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
             benchmark_returns.append(benchmark_return)
             portfolio_values.append(aum)  # add current AUM to the list
 
-        years.append(year)
+        years.append(year+1) #adding next year to match portfolio_values
 
-    # Calculate Information Ratio
-    information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
     
     if verbosity is not None and verbosity >= 1:
 
@@ -115,7 +113,8 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         overall_growth = (aum - initial_aum) / initial_aum if initial_aum else 0
         print(f"Final Portfolio Value after {end_year}: ${aum:.2f}")
         print(f"Overall Growth from {start_year} to {end_year}: {overall_growth * 100:.2f}%")
-        
+        # Calculate Information Ratio
+        information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
     
     
         if information_ratio is not None:
