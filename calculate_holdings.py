@@ -140,7 +140,7 @@ def get_benchmark_return(year):
     }
     return benchmark_data.get(year, 0)
 
-def calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity = 0):
+def calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity):
     """
     Calculates the Information Ratio (IR) for a given set of portfolio returns and benchmark returns.
     
