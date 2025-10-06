@@ -43,14 +43,11 @@ def main():
     )
     
     # Plot portfolio growth
-    fig = plot_portfolio_growth(
+    plot_portfolio_growth(
         years=results['years'],
         portfolio_values=results['portfolio_values'],
         restrict_fossil_fuels=restrict_fossil_fuels
     )
-
-    # Show plot in scripts or notebooks
-    plt.show()
 
 
 if __name__ == "__main__":
