@@ -46,6 +46,7 @@ def main():
     plot_portfolio_growth(
         years=results['years'],
         portfolio_values=results['portfolio_values'],
+        selected_factors=factors,
         restrict_fossil_fuels=restrict_fossil_fuels
     )
 
