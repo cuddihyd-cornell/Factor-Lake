@@ -7,44 +7,42 @@ from portfolio_growth_plot import plot_portfolio_growth
 import pandas as pd
 
 def main():
-    ### Load market data ###
+    ### Ask about fossil fuel restriction first ###
+    restrict_fossil_fuels = get_fossil_fuel_restriction()  # Prompt user (Yes/No)
+
+    ### Load market data (with or without restriction) ###
     print("Loading market data...")
-    rdata = load_data()
-    
-    ### Optional: Filter out fossil fuel-related industries ###
-    restrict_fossil_fuels = get_fossil_fuel_restriction()
-    
+    rdata = load_data(restrict_fossil_fuels=restrict_fossil_fuels)
+
     ### Data preprocessing ###
     print("Processing market data...")
     rdata['Ticker'] = rdata['Ticker-Region'].dropna().apply(lambda x: x.split('-')[0].strip())
     rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
-    
+
     available_factors = [
-        'ROE using 9/30 Data', 'ROA using 9/30 Data', '12-Mo Momentum %', '6-Mo Momentum %',
-        '1-Mo Momentum %', 'Price to Book Using 9/30 Data', 'Next FY Earns/P', '1-Yr Price Vol %',
-        'Accruals/Assets', 'ROA %', '1-Yr Asset Growth %', '1-Yr CapEX Growth %',
-        'Book/Price', "Next-Year's Return %", "Next-Year's Active Return %"
+        'ROE using 9/30 Data', 'ROA using 9/30 Data', '12-Mo Momentum %',
+        '6-Mo Momentum %', '1-Mo Momentum %', 'Price to Book Using 9/30 Data',
+        'Next FY Earns/P', '1-Yr Price Vol %', 'Accruals/Assets', 'ROA %',
+        '1-Yr Asset Growth %', '1-Yr CapEX Growth %', 'Book/Price',
+        "Next-Year's Return %", "Next-Year's Active Return %"
     ]
     rdata = rdata[['Ticker', 'Ending Price', 'Year'] + available_factors]
-    
+
+    ### Get user selections ###
     factors = get_factors(available_factors)
     verbosity_level = get_verbosity_level()
 
     ### Rebalancing portfolio across years ###
     print("\nRebalancing portfolio...")
     results = rebalance_portfolio(
-        data=rdata,
-        factors=factors,
-        start_year=2002,
-        end_year=2023,
+        rdata, factors,
+        start_year=2002, end_year=2023,
         initial_aum=1,
-        verbosity=verbosity_level,
-        restrict_fossil_fuels=restrict_fossil_fuels
+        verbosity=verbosity_level
     )
 
-    ### Plot portfolio growth ###
-    print("\nPlotting portfolio growth...")
-    plot_portfolio_growth(results['years'], results['portfolio_values'])
+    ### Plot portfolio growth with fossil fuel restriction status ###
+    plot_portfolio_growth(results, restrict_fossil_fuels=restrict_fossil_fuels)
 
 if __name__ == "__main__":
     main()
