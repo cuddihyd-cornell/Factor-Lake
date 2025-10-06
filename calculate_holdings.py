@@ -116,10 +116,9 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
   
     # Calculate Information Ratio
     information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
-    if information_ratio is not None:
-        print(f"Information Ratio: {information_ratio:.4f}")
-    else:
+    if information_ratio is None:
         print("Information Ratio could not be calculated due to zero tracking error.")
+        
     return {
         'final_value': aum,
         'yearly_returns': portfolio_returns,
