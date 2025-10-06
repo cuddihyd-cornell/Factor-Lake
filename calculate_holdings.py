@@ -68,6 +68,7 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
     years = []
     portfolio_returns = []  # Store yearly returns for Information Ratio
     benchmark_returns = []  # Store benchmark returns for comparison
+    portfolio_values = [aum]  # track total AUM over time
 
     for year in range(start_year, end_year):
 
@@ -99,6 +100,7 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
             # Get benchmark return for the year (replace it as needed)
             benchmark_return = get_benchmark_return(year)  # Define this function based on benchmark data
             benchmark_returns.append(benchmark_return)
+            portfolio_values.append(aum)  # add current AUM to the list
 
         years.append(year)
 
@@ -117,6 +119,7 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         'yearly_returns': portfolio_returns,
         'benchmark_returns': benchmark_returns,
         'years': years
+        'portfolio_values': portfolio_values 
     }
 
     # Calculate and print Information Ratio
