@@ -114,19 +114,19 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         print(f"Final Portfolio Value after {end_year}: ${aum:.2f}")
         print(f"Overall Growth from {start_year} to {end_year}: {overall_growth * 100:.2f}%")
   
-    return {
-        'final_value': aum,
-        'yearly_returns': portfolio_returns,
-        'benchmark_returns': benchmark_returns,
-        'years': years,
-        'portfolio_values': portfolio_values 
-    }
     # Calculate Information Ratio
     information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
     if information_ratio is not None:
         print(f"Information Ratio: {information_ratio:.4f}")
     else:
         print("Information Ratio could not be calculated due to zero tracking error.")
+     return {
+        'final_value': aum,
+        'yearly_returns': portfolio_returns,
+        'benchmark_returns': benchmark_returns,
+        'years': years,
+        'portfolio_values': portfolio_values 
+    }
     
 def get_benchmark_return(year):
     """
