@@ -5,6 +5,7 @@ from verbosity_options import get_verbosity_level
 from fossil_fuel_restriction import get_fossil_fuel_restriction
 from Visualizations.portfolio_growth_plot import plot_portfolio_growth
 import pandas as pd
+import matplotlib.pyplot as plt
 
 def main():
     ### Ask about fossil fuel restriction first ###
