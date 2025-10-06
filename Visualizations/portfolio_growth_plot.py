@@ -2,8 +2,7 @@
 
 
 import matplotlib.pyplot as plt
-
-def plot_portfolio_growth(years, portfolio_values, factor_set_name="Selected Factors", restrict_fossil_fuels=False):
+def plot_portfolio_growth(years, portfolio_values, selected_factors=None, restrict_fossil_fuels=False):
     """
     Plots the growth of a portfolio over time.
 
