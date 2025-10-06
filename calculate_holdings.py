@@ -120,13 +120,13 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         print(f"Information Ratio: {information_ratio:.4f}")
     else:
         print("Information Ratio could not be calculated due to zero tracking error.")
-     return {
+    return {
         'final_value': aum,
         'yearly_returns': portfolio_returns,
         'benchmark_returns': benchmark_returns,
         'years': years,
-        'portfolio_values': portfolio_values 
-    }
+        'portfolio_values': portfolio_values
+     }
     
 def get_benchmark_return(year):
     """
