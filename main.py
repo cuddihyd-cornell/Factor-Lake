@@ -40,14 +40,16 @@ def main():
         initial_aum=1,
         verbosity=verbosity_level
     )
-
-    ### Plot portfolio growth with fossil fuel restriction status ###
-    plot_portfolio_growth(
-    results['years'],
-    results['portfolio_values'],
-    factor_set_name="User Selected Factors",
-    restrict_fossil_fuels=restrict_fossil_fuels
+    
+    # Plot portfolio growth
+    fig = plot_portfolio_growth(
+        years=results['years'],
+        portfolio_values=results['portfolio_values'],
+        restrict_fossil_fuels=restrict_fossil_fuels
     )
+
+    # Show plot in scripts or notebooks
+    plt.show()
 
 
 if __name__ == "__main__":
