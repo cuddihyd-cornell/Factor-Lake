@@ -12,14 +12,16 @@ def plot_portfolio_growth(years, portfolio_values, factor_set_name="Selected Fac
         factor_set_name (str): Name of the factor set for labeling
         restrict_fossil_fuels (bool): Whether fossil fuel companies were excluded
     """
-    plt.figure(figsize=(10, 6))
-    plt.plot(years, portfolio_values, marker='o', linestyle='-', color='b', label=f'Portfolio ({factor_set_name})')
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(years, portfolio_values, marker='o', linestyle='-', color='b', label=f'Portfolio ({factor_set_name})')
 
     restriction_text = "Yes" if restrict_fossil_fuels else "No"
-    plt.title(f'Portfolio Growth Over Time ({factor_set_name})\nRestrict fossil fuel companies? {restriction_text}')
-    plt.xlabel('Year')
-    plt.ylabel('Portfolio Value ($)')
-    plt.grid(True)
-    plt.legend()
+    ax.set_title(f'Portfolio Growth Over Time ({factor_set_name})\nRestrict fossil fuel companies? {restriction_text}')
+    ax.set_xlabel('Year')
+    ax.set_ylabel('Portfolio Value ($)')
+    ax.grid(True)
+    ax.legend()
     plt.tight_layout()
-    plt.show()
+
+    return fig  # Return the figure instead of calling plt.show()
+
