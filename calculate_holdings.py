@@ -152,6 +152,7 @@ def calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity=
         float: The Information Ratio value.
     """
     # Ensure inputs are numpy arrays for mathematical operations
+    verbosity = 0 if verbosity is None else verbosity
     portfolio_returns = np.array(portfolio_returns)
     benchmark_returns = np.array(benchmark_returns)
 
