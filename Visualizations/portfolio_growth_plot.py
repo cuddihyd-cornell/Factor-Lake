@@ -24,7 +24,7 @@ def plot_portfolio_growth(years, portfolio_values, restrict_fossil_fuels=False):
     restriction_text = "Yes" if restrict_fossil_fuels else "No"]
     #alternatively
     #plt.title(f'Portfolio Growth Over Time ({factor_set_name})\nRestrict fossil fuel companies? {restriction_text}')
-    plt.title(f'Portfolio Growth Over Time\nRestrict fossil fuel companies? {restriction_text}')
+    plt.title('Portfolio Growth Over Time')
     plt.xlabel('Year')
     plt.ylabel('Portfolio Value ($)')
     plt.grid(True)
