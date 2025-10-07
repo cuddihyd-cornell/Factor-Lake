@@ -15,7 +15,16 @@ def plot_portfolio_growth(years, portfolio_values, selected_factors=None, restri
     if selected_factors is None or len(selected_factors) == 0:
         factor_set_name = "Selected Factors"
     else:
-        factor_set_name = ", ".join(str(f) for f in selected_factors)
+        #factor_set_name = ", ".join(str(f) for f in selected_factors)
+        factor_names = []
+        for f in selected_factors:
+            if hasattr(f, 'name'):
+                factor_names.append(f.name)
+            elif hasattr(f, '__name__'):
+                factor_names.append(f.__name__)
+            else:
+                factor_names.append(str(f))
+        factor_set_name = ", ".join(factor_names)
 
     plt.figure(figsize=(10, 6))
     plt.plot(years, portfolio_values, marker='o', linestyle='-', color='b', label=f'Portfolio ({factor_set_name})')
