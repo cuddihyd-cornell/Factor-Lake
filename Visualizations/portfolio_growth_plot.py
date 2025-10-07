@@ -12,7 +12,7 @@ def plot_portfolio_growth(years, portfolio_values, selected_factors=None, restri
         factor_set_name (str): Name of the factor set for labeling
         restrict_fossil_fuels (bool): Whether fossil fuel companies were excluded
     """
-     if selected_factors is None or len(selected_factors) == 0:
+    if selected_factors is None or len(selected_factors) == 0:
         factor_set_name = "Selected Factors"
     else:
         factor_set_name = ", ".join(str(f) for f in selected_factors)
