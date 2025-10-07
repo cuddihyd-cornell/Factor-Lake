@@ -15,6 +15,22 @@ def main():
     print("Loading market data...")
     rdata = load_data(restrict_fossil_fuels=restrict_fossil_fuels)
 
+    ### Optional: Filter out fossil fuel-related industries ###
+    restrict_fossil_fuels = get_fossil_fuel_restriction()  # Prompt user for restriction
+    if restrict_fossil_fuels:
+        excluded_industries = [
+            "Integrated Oil",
+            "Oilfield Services/Equipment",
+            "Oil & Gas Production"
+        ]
+        if 'FactSet Industry' in rdata.columns:
+            original_len = len(rdata)
+            rdata = rdata[~rdata['FactSet Industry'].isin(excluded_industries)].copy()
+            print(f"Filtered out {original_len - len(rdata)} fossil fuel-related companies.")
+            print(f"Fossil Fuel Keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']")
+        else:
+            print("Warning: 'FactSet Industry' column not found. Cannot apply fossil fuel filter.")
+
     ### Data preprocessing ###
     print("Processing market data...")
     rdata['Ticker'] = rdata['Ticker-Region'].dropna().apply(lambda x: x.split('-')[0].strip())
