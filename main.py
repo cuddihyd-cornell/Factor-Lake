@@ -33,6 +33,9 @@ def main():
     factors = get_factors(available_factors)
     verbosity_level = get_verbosity_level()
 
+    # separate objects from names
+    factor_objects, factor_names = zip(*factors) if factors else ([], [])
+
     ### Rebalancing portfolio across years ###
     print("\nRebalancing portfolio...")
     results = rebalance_portfolio(
