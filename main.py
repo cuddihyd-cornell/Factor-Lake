@@ -34,7 +34,7 @@ def main():
     verbosity_level = get_verbosity_level()
 
     # separate objects from names
-    factor_objects, factor_names = zip(*factors) if factors else ([], [])
+    #factor_objects, factor_names = zip(*factors) if factors else ([], [])
 
     ### Rebalancing portfolio across years ###
     print("\nRebalancing portfolio...")
