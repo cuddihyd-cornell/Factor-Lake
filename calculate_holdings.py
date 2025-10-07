@@ -65,9 +65,10 @@ def calculate_growth(portfolio, next_market, current_market, verbosity=0):
 
 def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=None, restrict_fossil_fuels=False):
     aum = initial_aum
-    years = []
+    years = [start_year] # Start with the initial year
     portfolio_returns = []  # Store yearly returns for Information Ratio
     benchmark_returns = []  # Store benchmark returns for comparison
+    portfolio_values = [aum]  # track total AUM over time
 
     for year in range(start_year, end_year):
 
@@ -99,9 +100,11 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
             # Get benchmark return for the year (replace it as needed)
             benchmark_return = get_benchmark_return(year)  # Define this function based on benchmark data
             benchmark_returns.append(benchmark_return)
+            portfolio_values.append(aum)  # add current AUM to the list
 
-        years.append(year)
+        years.append(year+1) #adding next year to match portfolio_values
 
+    
     if verbosity is not None and verbosity >= 1:
 
         print("\n==== Final Summary ====")
@@ -110,24 +113,20 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         overall_growth = (aum - initial_aum) / initial_aum if initial_aum else 0
         print(f"Final Portfolio Value after {end_year}: ${aum:.2f}")
         print(f"Overall Growth from {start_year} to {end_year}: {overall_growth * 100:.2f}%")
-        information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
-    
+  
+    # Calculate Information Ratio
+    information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
+    if information_ratio is None:
+        print("Information Ratio could not be calculated due to zero tracking error.")
+        
     return {
         'final_value': aum,
         'yearly_returns': portfolio_returns,
         'benchmark_returns': benchmark_returns,
-        'years': years
-    }
-
-    # Calculate and print Information Ratio
-    information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns)
-    if information_ratio is not None:
-        print(f"Information Ratio: {information_ratio:.4f}")
-    else:
-        print("Information Ratio could not be calculated due to zero tracking error.")
+        'years': years,
+        'portfolio_values': portfolio_values
+     }
     
-    return portfolio_returns, benchmark_returns, aum
-
 def get_benchmark_return(year):
     """
     This function should return the benchmark return for the given year.
@@ -141,7 +140,7 @@ def get_benchmark_return(year):
     }
     return benchmark_data.get(year, 0)
 
-def calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity = 0):
+def calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity=0):
     """
     Calculates the Information Ratio (IR) for a given set of portfolio returns and benchmark returns.
     
@@ -153,6 +152,7 @@ def calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity 
         float: The Information Ratio value.
     """
     # Ensure inputs are numpy arrays for mathematical operations
+    verbosity = 0 if verbosity is None else verbosity
     portfolio_returns = np.array(portfolio_returns)
     benchmark_returns = np.array(benchmark_returns)
 
