@@ -33,23 +33,24 @@ def main():
     factors = get_factors(available_factors)
     verbosity_level = get_verbosity_level()
 
-    # separate objects from names
-    #factor_objects, factor_names = zip(*factors) if factors else ([], [])
+    # Separate factor objects from their names for use downstream
+    factor_objects, factor_names = (zip(*factors) if factors else ([], []))
 
     ### Rebalancing portfolio across years ###
     print("\nRebalancing portfolio...")
     results = rebalance_portfolio(
-        rdata, factors,
+        rdata, list(factor_objects),
         start_year=2002, end_year=2023,
         initial_aum=1,
-        verbosity=verbosity_level
+        verbosity=verbosity_level,
+        restrict_fossil_fuels=restrict_fossil_fuels
     )
     
     # Plot portfolio growth
     plot_portfolio_growth(
         years=results['years'],
         portfolio_values=results['portfolio_values'],
-        # selected_factors=factors_names,
+        selected_factors=list(factor_names),
         restrict_fossil_fuels=restrict_fossil_fuels
     )
 
