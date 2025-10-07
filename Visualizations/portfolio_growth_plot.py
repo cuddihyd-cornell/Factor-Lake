@@ -18,10 +18,16 @@ def plot_portfolio_growth(years, portfolio_values, selected_factors=None, restri
         #factor_set_name = ", ".join(str(f) for f in selected_factors)
         factor_names = []
         for f in selected_factors:
-            if hasattr(f, 'name'):
+            # Case 1: Factor is already a string
+            if isinstance(f, str):
+                factor_names.append(f)
+            # Case 2: Factor has a readable name attribute
+            elif hasattr(f, 'name'):
                 factor_names.append(f.name)
-            elif hasattr(f, '__name__'):
-                factor_names.append(f.__name__)
+            # Case 3: Factor has a class name (like NextYrEarns)
+            elif hasattr(f, '__class__'):
+                factor_names.append(f.__class__.__name__)
+            # Fallback: just string version
             else:
                 factor_names.append(str(f))
         factor_set_name = ", ".join(factor_names)
