@@ -19,8 +19,6 @@ def plot_portfolio_growth(years, portfolio_values, selected_factors=None, restri
     plt.figure(figsize=(10, 6))
     
     plt.plot(years, portfolio_values, marker='o', linestyle='-', color='b')
-
-    
     plt.xlabel('Year')
     plt.ylabel('Portfolio Value ($)')
     plt.grid(True)
