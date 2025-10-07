@@ -16,7 +16,6 @@ def main():
     rdata = load_data(restrict_fossil_fuels=restrict_fossil_fuels)
 
     ### Optional: Filter out fossil fuel-related industries ###
-    restrict_fossil_fuels = get_fossil_fuel_restriction()  # Prompt user for restriction
     if restrict_fossil_fuels:
         excluded_industries = [
             "Integrated Oil",
