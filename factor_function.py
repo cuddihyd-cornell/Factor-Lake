@@ -4,6 +4,14 @@ class Factors:
     def __init__(self, column_name):
         self.column_name = column_name
 
+    def __str__(self):
+        # friendly name when converted to string
+        return self.column_name
+
+    def __repr__(self):
+        # Helpful debug representation
+        return f"{self.__class__.__name__}('{self.column_name}')"
+
     def get(self, ticker, market):
         # Pre-indexed market stocks for faster lookup
         try:
