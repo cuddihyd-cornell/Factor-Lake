@@ -19,7 +19,7 @@ def plot_portfolio_growth(years, portfolio_values, restrict_fossil_fuels=False):
     plt.figure(figsize=(10, 6))
     #alternative
     #plt.plot(years, portfolio_values, marker='o', linestyle='-', color='b', label=f'Portfolio ({factor_set_name})')
-    plt.plot(years, portfolio_values, marker='o', linestyle='-', color='b', label=f'Portfolio')
+    plt.plot(years, portfolio_values, marker='o', linestyle='-', color='b', label='Portfolio')
 
     restriction_text = "Yes" if restrict_fossil_fuels else "No"]
     #alternatively
