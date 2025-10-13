@@ -22,11 +22,8 @@ def calculate_holdings(factors, weights, aum, market, restrict_fossil_fuels=Fals
             mask = market.stocks[industry_col].str.lower().apply(lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
             market.stocks = market.stocks[mask]
 
-    # Use 'Ticker-Region' for tickers if present, else fallback to index
-    if 'Ticker-Region' in market.stocks.columns:
-        tickers = market.stocks['Ticker-Region']
-    else:
-        tickers = market.stocks.index
+    # Always use the DataFrame index which is set to 'Ticker' in MarketObject
+    tickers = market.stocks.index
 
     factor_scores = {}
     for ticker in tickers:
