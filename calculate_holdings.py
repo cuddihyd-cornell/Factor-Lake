@@ -30,14 +30,17 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
         for ticker in tickers:
             value = factor.get(ticker, market)
             price = market.get_price(ticker)
-            # Only exclude if price is missing or not positive; allow zero factor values
-            if (price is not None and not pd.isna(price) and price > 0
-                and value is not None and not pd.isna(value)):
-                factor_values[ticker] = value
-                valid_tickers.append(ticker)
+            # Exclude if price or factor value is missing/null/NaN
+            if (price is not None and not pd.isna(price) and value is not None and not pd.isna(value)):
+                if price > 0:
+                    factor_values[ticker] = value
+                    valid_tickers.append(ticker)
+                else:
+                    if len(factor_values) < 3:
+                        print(f"DEBUG: Ticker {ticker} excluded - price not positive: {price}")
             else:
                 if len(factor_values) < 3:
-                    print(f"DEBUG: Ticker {ticker} excluded - factor: {value}, price: {price}")
+                    print(f"DEBUG: Ticker {ticker} excluded - NULL value(s): factor: {value}, price: {price}")
 
         print(f"DEBUG: Found {len(factor_values)} valid factor+price values out of {len(tickers)} tickers")
 
