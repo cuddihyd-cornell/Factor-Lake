@@ -24,37 +24,41 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     else:
         tickers = market.stocks.index
 
-    factor_values = {}
-    for ticker in tickers:
-        value = factor.get(ticker, market)
-        if isinstance(value, (int, float)) and not pd.isna(value):
-            factor_values[ticker] = value
-        else:
-            if len(factor_values) < 3:  # Only show first few for debugging
-                print(f"DEBUG: Ticker {ticker} - factor value: {value} (type: {type(value)})")
-    
-    print(f"DEBUG: Found {len(factor_values)} valid factor values out of {len(market.stocks.index)} tickers")
+        # Remove rows with nulls in factor or price
+        valid_tickers = []
+        factor_values = {}
+        for ticker in tickers:
+            value = factor.get(ticker, market)
+            price = market.get_price(ticker)
+            if (isinstance(value, (int, float)) and not pd.isna(value)
+                and price is not None and not pd.isna(price) and price > 0):
+                factor_values[ticker] = value
+                valid_tickers.append(ticker)
+            else:
+                if len(factor_values) < 3:
+                    print(f"DEBUG: Ticker {ticker} excluded - factor: {value}, price: {price}")
 
-    # Sort securities by factor values in descending order
-    sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
+        print(f"DEBUG: Found {len(factor_values)} valid factor+price values out of {len(tickers)} tickers")
 
-    # Select the top 10% of securities (minimum 1)
-    top_10_percent = sorted_securities[:max(1, len(sorted_securities) // 10)]
+        # Sort securities by factor values in descending order
+        sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
 
-    # Calculate number of shares for each selected security
-    portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
-    if len(top_10_percent) == 0:
-        print("WARNING: No stocks passed the filtering criteria. Returning empty Portfolio object.")
-        return portfolio_new
-    equal_investment = aum / len(top_10_percent)
+        # Select the top 10% of securities (minimum 1)
+        top_10_percent = sorted_securities[:max(1, len(sorted_securities) // 10)]
 
-    for ticker, _ in top_10_percent:
-        price = market.get_price(ticker)
-        if price is not None and price > 0:
+        # Calculate number of shares for each selected security
+        portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
+        if len(top_10_percent) == 0:
+            print("WARNING: No stocks passed the filtering criteria. Returning empty Portfolio object.")
+            return portfolio_new
+        equal_investment = aum / len(top_10_percent)
+
+        for ticker, _ in top_10_percent:
+            price = market.get_price(ticker)
             shares = equal_investment / price
             portfolio_new.add_investment(ticker, shares)
 
-    return portfolio_new
+        return portfolio_new
 
 def calculate_growth(portfolio, next_market, current_market, verbosity=0):
     # Calculate start value using the current market
