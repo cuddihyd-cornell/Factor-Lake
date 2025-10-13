@@ -3,8 +3,18 @@ from portfolio import Portfolio
 import numpy as np
 import pandas as pd
 
-def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
-    # Apply sector restrictions if enabled
+def calculate_holdings(factors, weights, aum, market, restrict_fossil_fuels=False):
+    """
+    Build a portfolio using weighted factors from Supabase data.
+    Args:
+        factors: list of factor objects (each with .column_name and .get())
+        weights: list of floats, same length as factors
+        aum: total assets under management
+        market: MarketObject
+        restrict_fossil_fuels: bool
+    Returns:
+        Portfolio object
+    """
     if restrict_fossil_fuels:
         industry_col = 'FactSet Industry'
         if industry_col in market.stocks.columns:
@@ -12,59 +22,51 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
             mask = market.stocks[industry_col].str.lower().apply(lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
             market.stocks = market.stocks[mask]
 
-    # Debug: Check what's available in the market data
-    print(f"DEBUG: Market columns: {list(market.stocks.columns)}")
-    print(f"DEBUG: Factor column being looked for: {factor.column_name}")
-    print(f"DEBUG: Number of tickers in market: {len(market.stocks.index)}")
-    print(f"DEBUG: Sample ticker values: {list(market.stocks.index[:5])}")
-    
     # Use 'Ticker-Region' for tickers if present, else fallback to index
     if 'Ticker-Region' in market.stocks.columns:
         tickers = market.stocks['Ticker-Region']
     else:
         tickers = market.stocks.index
 
-        # Remove rows with nulls in factor or price
-        valid_tickers = []
-        factor_values = {}
-        for ticker in tickers:
+    factor_scores = {}
+    for ticker in tickers:
+        price = market.get_price(ticker)
+        if price is None or pd.isna(price) or price <= 0:
+            continue
+        values = []
+        valid = True
+        for factor in factors:
             value = factor.get(ticker, market)
-            price = market.get_price(ticker)
-            # Exclude if price or factor value is missing/null/NaN
-            if (price is not None and not pd.isna(price) and value is not None and not pd.isna(value)):
-                if price > 0:
-                    factor_values[ticker] = value
-                    valid_tickers.append(ticker)
-                else:
-                    if len(factor_values) < 3:
-                        print(f"DEBUG: Ticker {ticker} excluded - price not positive: {price}")
-            else:
-                if len(factor_values) < 3:
-                    print(f"DEBUG: Ticker {ticker} excluded - NULL value(s): factor: {value}, price: {price}")
+            if value is None or pd.isna(value):
+                valid = False
+                break
+            values.append(value)
+        if not valid:
+            continue
+        # Weighted sum of factors
+        score = sum(w * v for w, v in zip(weights, values))
+        factor_scores[ticker] = score
 
-        print(f"DEBUG: Found {len(factor_values)} valid factor+price values out of {len(tickers)} tickers")
+    if not factor_scores:
+        print("WARNING: No valid securities after filtering. Returning empty Portfolio object.")
+        return Portfolio(name=f"Portfolio_{market.t}")
 
-        # Sort securities by factor values in descending order
-        sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
+    # Sort by weighted score
+    sorted_securities = sorted(factor_scores.items(), key=lambda x: x[1], reverse=True)
+    top_10_percent = sorted_securities[:max(1, len(sorted_securities) // 10)]
 
-        # Select the top 10% of securities (minimum 1)
-        if len(sorted_securities) == 0:
-            print("WARNING: No valid securities after filtering. Returning empty Portfolio object.")
-            return Portfolio(name=f"Portfolio_{market.t}")
-        top_10_percent = sorted_securities[:max(1, len(sorted_securities) // 10)]
-
-        portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
-        if len(top_10_percent) == 0:
-            print("WARNING: No stocks passed the filtering criteria. Returning empty Portfolio object.")
-            return portfolio_new
-
-        equal_investment = aum / len(top_10_percent)
-        for ticker, _ in top_10_percent:
-            price = market.get_price(ticker)
-            shares = equal_investment / price
-            portfolio_new.add_investment(ticker, shares)
-
+    portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
+    if len(top_10_percent) == 0:
+        print("WARNING: No stocks passed the filtering criteria. Returning empty Portfolio object.")
         return portfolio_new
+
+    equal_investment = aum / len(top_10_percent)
+    for ticker, _ in top_10_percent:
+        price = market.get_price(ticker)
+        shares = equal_investment / price
+        portfolio_new.add_investment(ticker, shares)
+
+    return portfolio_new
 
 def calculate_growth(portfolio, next_market, current_market, verbosity=0):
     # Calculate start value using the current market
