@@ -18,7 +18,7 @@ def test_supabase_connection():
         print("✅ Successfully connected to Supabase")
         return True
     except Exception as e:
-        print(f"❌ Failed to connect to Supabase: {e}")
+        print(f"Failed to connect to Supabase: {e}")
         return False
 
 def test_data_loading():
@@ -40,7 +40,7 @@ def test_data_loading():
         return True
         
     except Exception as e:
-        print(f"❌ Failed to load data: {e}")
+        print(f"Failed to load data: {e}")
         return False
 
 def test_fossil_fuel_filter():
@@ -56,18 +56,18 @@ def test_fossil_fuel_filter():
             print("⚠️  No data available to test filtering")
             return False
         
-        print(f"✅ All data: {len(data_all)} records")
-        print(f"✅ Filtered data: {len(data_filtered)} records")
+        print(f"All data: {len(data_all)} records")
+        print(f"Filtered data: {len(data_filtered)} records")
         
         if len(data_filtered) < len(data_all):
-            print(f"✅ Fossil fuel filter working: removed {len(data_all) - len(data_filtered)} companies")
+            print(f"Fossil fuel filter working: removed {len(data_all) - len(data_filtered)} companies")
         else:
-            print("⚠️  Fossil fuel filter may not be working (no records filtered)")
+            print("Fossil fuel filter may not be working (no records filtered)")
         
         return True
         
     except Exception as e:
-        print(f"❌ Failed to test fossil fuel filtering: {e}")
+        print(f"Failed to test fossil fuel filtering: {e}")
         return False
 
 def test_factor_columns():
@@ -78,7 +78,7 @@ def test_factor_columns():
         data = load_data(use_supabase=True, restrict_fossil_fuels=False)
         
         if data.empty:
-            print("⚠️  No data available to test columns")
+            print(" No data available to test columns")
             return False
         
         # Expected factor columns
@@ -93,24 +93,24 @@ def test_factor_columns():
         available_factors = [col for col in expected_factors if col in data.columns]
         missing_factors = [col for col in expected_factors if col not in data.columns]
         
-        print(f"✅ Available factors ({len(available_factors)}): {available_factors}")
+        print(f"Available factors ({len(available_factors)}): {available_factors}")
         if missing_factors:
-            print(f"⚠️  Missing factors ({len(missing_factors)}): {missing_factors}")
+            print(f"Missing factors ({len(missing_factors)}): {missing_factors}")
         
         return len(available_factors) > 0
         
     except Exception as e:
-        print(f"❌ Failed to test factor columns: {e}")
+        print(f"Failed to test factor columns: {e}")
         return False
 
 def main():
     """Run all tests."""
-    print("🧪 Running Supabase Integration Tests")
+    print(" Running Supabase Integration Tests")
     print("=" * 50)
     
     # Check environment variables
     if not os.getenv('SUPABASE_URL') or not os.getenv('SUPABASE_KEY'):
-        print("❌ SUPABASE_URL and SUPABASE_KEY environment variables must be set")
+        print(" SUPABASE_URL and SUPABASE_KEY environment variables must be set")
         print("   Add these to your environment or Colab notebook:")
         print("   os.environ['SUPABASE_URL'] = 'your_project_url'")
         print("   os.environ['SUPABASE_KEY'] = 'your_anon_key'")
@@ -129,13 +129,13 @@ def main():
         results.append(test())
     
     print("\n" + "=" * 50)
-    print("🏁 Test Results Summary")
-    print(f"✅ Passed: {sum(results)}/{len(results)} tests")
+    print(" Test Results Summary")
+    print(f" Passed: {sum(results)}/{len(results)} tests")
     
     if all(results):
-        print("🎉 All tests passed! Your Supabase integration is ready.")
+        print(" All tests passed! Your Supabase integration is ready.")
     else:
-        print("⚠️  Some tests failed. Check the errors above and your Supabase setup.")
+        print("  Some tests failed. Check the errors above and your Supabase setup.")
 
 if __name__ == "__main__":
     main()

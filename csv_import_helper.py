@@ -1,8 +1,8 @@
 """
 CSV Import Helper for Supabase Migration
 
-This script helps you import your Excel data into Supabase.
-Run this after setting up your Supabase database with the correct schema.
+This script helps import Excel data into Supabase.
+Run this after setting up the Supabase database with the correct schema.
 """
 
 import pandas as pd
@@ -148,11 +148,11 @@ def upload_to_supabase(df, table_name='market_data', batch_size=1000):
         try:
             response = client.client.table(table_name).insert(batch).execute()
             successful_uploads += len(batch)
-            logger.info(f"✅ Batch {batch_num}/{total_batches} uploaded successfully ({len(batch)} records)")
+            logger.info(f"Batch {batch_num}/{total_batches} uploaded successfully ({len(batch)} records)")
             
         except Exception as e:
             failed_uploads += len(batch)
-            logger.error(f"❌ Batch {batch_num}/{total_batches} failed: {e}")
+            logger.error(f"Batch {batch_num}/{total_batches} failed: {e}")
             
             # Try uploading records individually to identify problematic ones
             logger.info("Trying individual record uploads for this batch...")
@@ -173,7 +173,7 @@ def main():
     
     # Check environment variables
     if not os.getenv('SUPABASE_URL') or not os.getenv('SUPABASE_KEY'):
-        print("❌ Please set SUPABASE_URL and SUPABASE_KEY environment variables")
+        print("Please set SUPABASE_URL and SUPABASE_KEY environment variables")
         print("Example:")
         print("os.environ['SUPABASE_URL'] = 'https://your-project.supabase.co'")
         print("os.environ['SUPABASE_KEY'] = 'your-anon-key'")
@@ -183,7 +183,7 @@ def main():
     excel_file_path = input("Enter path to your Excel file: ").strip()
     
     if not os.path.exists(excel_file_path):
-        print(f"❌ File not found: {excel_file_path}")
+        print(f" File not found: {excel_file_path}")
         return
     
     try:
@@ -205,17 +205,17 @@ def main():
         # Upload to Supabase
         successful, failed = upload_to_supabase(df)
         
-        print(f"\n🎉 Import complete!")
-        print(f"✅ Successful: {successful} records")
-        print(f"❌ Failed: {failed} records")
+        print(f"\n Import complete!")
+        print(f" Successful: {successful} records")
+        print(f" Failed: {failed} records")
         
         if failed > 0:
-            print("\n💡 If you had failures, check the log messages above for details.")
+            print("\n If you had failures, check the log messages above for details.")
             print("Common issues: data type mismatches, constraint violations, or connection timeouts.")
         
     except Exception as e:
         logger.error(f"Import failed: {e}")
-        print(f"\n❌ Import failed: {e}")
+        print(f"\n Import failed: {e}")
 
 if __name__ == "__main__":
     main()

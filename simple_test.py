@@ -21,21 +21,21 @@ def test_connection():
     try:
         from supabase_client import create_supabase_client
         client = create_supabase_client()
-        print("✅ Successfully connected to Supabase!")
+        print(" Successfully connected to Supabase!")
         
         # Test a simple query
         response = client.client.table('All').select('*').limit(1).execute()
         
         if response.data:
-            print(f"✅ Successfully queried data! Found records in 'All' table.")
+            print(f" Successfully queried data! Found records in 'All' table.")
             print(f"Sample record columns: {list(response.data[0].keys())}")
             return True
         else:
-            print("⚠️  Connected but no data found in 'All' table.")
+            print("  Connected but no data found in 'All' table.")
             return False
             
     except Exception as e:
-        print(f"❌ Connection failed: {e}")
+        print(f" Connection failed: {e}")
         return False
 
 if __name__ == "__main__":
