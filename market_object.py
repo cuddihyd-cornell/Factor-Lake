@@ -1,10 +1,22 @@
 import pandas as pd
 import numpy as np
+from supabase import create_client
+from dotenv import load_dotenv
+import os
+
+# Load .env from repo folder
+load_dotenv("/content/Factor-Lake/supabase.env")
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 ### CREATING FUNCTION TO LOAD DATA ###
 def load_data(restrict_fossil_fuels=False):
-    file_path = '/content/drive/My Drive/Cayuga Fund Factor Lake/FR2000 Annual Quant Data FOR RETURN SIMULATION.xlsx'
-    rdata = pd.read_excel(file_path, sheet_name='Data', header=2, skiprows=[3, 4])
+    # Fetch data from Supabase
+    response = supabase.table("FR2000 Annual Quant Data").select("*").execute()
+    rdata = pd.DataFrame(response.data)
 
     # Strip whitespace from column names and remove duplicates
     rdata.columns = rdata.columns.str.strip()
