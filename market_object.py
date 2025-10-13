@@ -203,6 +203,49 @@ def _filter_essential_data(df):
     
     return df
 
+from supabase import create_client
+from dotenv import load_dotenv
+import os
+
+# Load .env from repo folder
+load_dotenv("/content/Factor-Lake/.env")
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+### CREATING FUNCTION TO LOAD DATA ###
+def load_data(restrict_fossil_fuels=False):
+    # Fetch data from Supabase
+    response = supabase.table("FR2000 Annual Quant Data").select("*").execute()
+    rdata = pd.DataFrame(response.data)
+    # 🔍 Add this line to inspect the columns
+    print("Supabase columns:", rdata.columns.tolist())
+
+    # Strip whitespace from column names and remove duplicates
+    rdata.columns = rdata.columns.str.strip()
+    rdata = rdata.loc[:, ~rdata.columns.duplicated(keep='first')]
+    # Add 'Ticker' column if missing
+    if 'Ticker' not in rdata.columns and 'Ticker-Region' in rdata.columns:
+        rdata['Ticker'] = rdata['Ticker-Region'].str.split('-').str[0].str.strip()
+
+    # Apply sector restriction logic
+    if restrict_fossil_fuels:
+        industry_col = 'FactSet Industry'
+        if industry_col in rdata.columns:
+            rdata[industry_col] = rdata[industry_col].astype(str).str.lower()
+            fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
+            mask = rdata[industry_col].apply(lambda x: not any(kw in x for kw in fossil_keywords))
+            rdata = rdata[mask]
+        else:
+            print("Warning: 'FactSet Industry' column not found. Fossil fuel filtering skipped.")
+
+    # Ensure 'Year' column is present
+    if 'Year' not in rdata.columns and 'Date' in rdata.columns:
+        rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
+
+    return rdata
 
 class MarketObject():
     def __init__(self, data, t, verbosity=1):
