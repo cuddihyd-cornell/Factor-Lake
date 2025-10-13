@@ -33,17 +33,17 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     # Sort securities by factor values in descending order
     sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
 
-    # Select the top 10 securities (or all if less than 10)
-    top_10 = sorted_securities[:min(10, len(sorted_securities))]
+    # Select the top 10% of securities (minimum 1)
+    top_10_percent = sorted_securities[:max(1, len(sorted_securities) // 10)]
 
     # Calculate number of shares for each selected security
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
-    if len(top_10) == 0:
-        print("WARNING: No stocks passed the filtering criteria. Skipping portfolio construction.")
-        return {}
-    equal_investment = aum / len(top_10)
+    if len(top_10_percent) == 0:
+        print("WARNING: No stocks passed the filtering criteria. Returning empty portfolio.")
+        return portfolio_new
+    equal_investment = aum / len(top_10_percent)
 
-    for ticker, _ in top_10:
+    for ticker, _ in top_10_percent:
         price = market.get_price(ticker)
         if price is not None and price > 0:
             shares = equal_investment / price
