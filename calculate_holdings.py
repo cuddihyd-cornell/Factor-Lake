@@ -12,12 +12,23 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
             mask = market.stocks[industry_col].str.lower().apply(lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
             market.stocks = market.stocks[mask]
 
+    # Debug: Check what's available in the market data
+    print(f"DEBUG: Market columns: {list(market.stocks.columns)}")
+    print(f"DEBUG: Factor column being looked for: {factor.column_name}")
+    print(f"DEBUG: Number of tickers in market: {len(market.stocks.index)}")
+    print(f"DEBUG: Sample ticker values: {list(market.stocks.index[:5])}")
+    
     # Access tickers directly from the index instead of the 'Ticker' column
-    factor_values = {
-        ticker: factor.get(ticker, market)
-        for ticker in market.stocks.index
-        if isinstance(factor.get(ticker, market), (int, float))  # Ensure scalar values
-    }
+    factor_values = {}
+    for ticker in market.stocks.index:
+        value = factor.get(ticker, market)
+        if isinstance(value, (int, float)) and not pd.isna(value):
+            factor_values[ticker] = value
+        else:
+            if len(factor_values) < 3:  # Only show first few for debugging
+                print(f"DEBUG: Ticker {ticker} - factor value: {value} (type: {type(value)})")
+    
+    print(f"DEBUG: Found {len(factor_values)} valid factor values out of {len(market.stocks.index)} tickers")
 
     # Sort securities by factor values in descending order
     sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)

@@ -1,4 +1,5 @@
 from market_object import load_data
+import pandas as pd
 
 class Factors:
     def __init__(self, column_name):
@@ -16,6 +17,18 @@ class Factors:
         # Pre-indexed market stocks for faster lookup
         try:
             value = market.stocks.loc[ticker, self.column_name]
+            
+            # Check if the value is valid (not NaN, not None)
+            if pd.isna(value) or value is None:
+                return None
+                
+            # Convert to numeric if it's a string representation of a number
+            if isinstance(value, str):
+                try:
+                    value = float(value)
+                except (ValueError, TypeError):
+                    return None
+            
             return value
         except KeyError:
             print(f"{ticker} - not found in market data for {market.t} - SKIPPING")

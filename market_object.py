@@ -73,7 +73,10 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='All'):
             if 'Year' not in rdata.columns and 'Date' in rdata.columns:
                 rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
 
-            print(f"Successfully loaded {len(rdata)} records from Excel file")
+            # Filter out rows with missing essential data (same as Supabase filtering)
+            rdata = _filter_essential_data(rdata)
+            
+            print(f"Successfully loaded {len(rdata)} records from Excel file after filtering")
             return rdata
             
         except Exception as e:
@@ -158,6 +161,41 @@ def _standardize_column_names(df):
     
     return df
 
+
+def _filter_essential_data(df):
+    """
+    Filter out rows with missing essential data like pricing information.
+    """
+    if df.empty:
+        return df
+        
+    initial_count = len(df)
+    
+    # Remove rows where Ending Price is missing or invalid
+    if 'Ending Price' in df.columns:
+        df = df[df['Ending Price'].notna() & (df['Ending Price'] > 0)]
+    
+    # Remove rows where Ticker is missing
+    if 'Ticker' in df.columns:
+        df = df[df['Ticker'].notna() & (df['Ticker'] != '') & (df['Ticker'] != '--')]
+    elif 'Ticker-Region' in df.columns:
+        df = df[df['Ticker-Region'].notna() & (df['Ticker-Region'] != '') & (df['Ticker-Region'] != '--')]
+    
+    # Remove rows where Date/Year is missing
+    if 'Year' in df.columns:
+        df = df[df['Year'].notna()]
+    elif 'Date' in df.columns:
+        df = df[df['Date'].notna()]
+    
+    filtered_count = len(df)
+    removed_count = initial_count - filtered_count
+    
+    if removed_count > 0:
+        print(f"Filtered out {removed_count} rows with missing essential data (price, ticker, or date)")
+    
+    return df
+
+
 class MarketObject():
     def __init__(self, data, t, verbosity=1):
         """
@@ -186,7 +224,13 @@ class MarketObject():
 
         # Filter and clean data
         data = data[[col for col in keep_cols if col in data.columns]].copy()
-        data.replace({'--': None}, inplace=True)
+        data.replace({'--': None, 'N/A': None, '#N/A': None, '': None}, inplace=True)
+        
+        # Convert numeric columns to proper numeric types
+        numeric_columns = ['Ending Price'] + [col for col in available_factors if col in data.columns]
+        for col in numeric_columns:
+            if col in data.columns:
+                data[col] = pd.to_numeric(data[col], errors='coerce')
 
         # Set 'Ticker' as the index for faster lookups
         data.set_index('Ticker', inplace=True)
@@ -197,7 +241,13 @@ class MarketObject():
 
     def get_price(self, ticker):
         try:
-            return self.stocks.at[ticker, 'Ending Price']
+            price = self.stocks.at[ticker, 'Ending Price']
+            # Check if price is valid (not NaN, not None, and positive)
+            if pd.isna(price) or price is None or price <= 0:
+                if self.verbosity >= 2:
+                    print(f"{ticker} - invalid price ({price}) for {self.t} - SKIPPING")
+                return None
+            return price
         except KeyError:
             if self.verbosity >= 2:
                 print(f"{ticker} - not found in market data for {self.t} - SKIPPING")

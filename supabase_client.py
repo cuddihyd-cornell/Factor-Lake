@@ -80,7 +80,10 @@ class SupabaseDataClient:
             # Clean and standardize column names
             df = self._clean_dataframe(df)
             
-            logger.info(f"Loaded {len(df)} records from Supabase")
+            # Filter out rows with missing essential data
+            df = self._filter_incomplete_data(df)
+            
+            logger.info(f"Loaded {len(df)} records from Supabase after filtering")
             return df
             
         except Exception as e:
@@ -120,7 +123,7 @@ class SupabaseDataClient:
         df = df.loc[:, ~df.columns.duplicated(keep='first')]
         
         # Replace common null representations
-        df.replace({'--': None, '': None}, inplace=True)
+        df.replace({'--': None, '': None, 'N/A': None, '#N/A': None, 'NULL': None, 'null': None}, inplace=True)
         
         # Ensure ticker column exists
         if 'ticker' not in df.columns and 'ticker_region' in df.columns:
@@ -129,6 +132,64 @@ class SupabaseDataClient:
         # Ensure year column exists
         if 'year' not in df.columns and 'date' in df.columns:
             df['year'] = pd.to_datetime(df['date']).dt.year
+        
+        return df
+    
+    def _filter_incomplete_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Filter out rows with missing essential data after querying.
+        Removes rows where critical columns like price data are missing.
+        """
+        initial_count = len(df)
+        
+        # Define essential columns that must have valid data
+        essential_columns = []
+        
+        # Check for price columns (try multiple possible names)
+        price_columns = ['Ending Price', 'ending_price', 'Price']
+        for col in price_columns:
+            if col in df.columns:
+                essential_columns.append(col)
+                break
+        
+        # Check for ticker columns
+        ticker_columns = ['Ticker', 'ticker', 'Ticker-Region', 'ticker_region']
+        for col in ticker_columns:
+            if col in df.columns:
+                essential_columns.append(col)
+                break
+        
+        # Check for date/year columns
+        date_columns = ['Date', 'date', 'Year', 'year']
+        for col in date_columns:
+            if col in df.columns:
+                essential_columns.append(col)
+                break
+        
+        if not essential_columns:
+            logger.warning("No essential columns found for filtering")
+            return df
+        
+        # Filter out rows where essential columns are null or invalid
+        for col in essential_columns:
+            if col in df.columns:
+                # Remove rows where the column is null, empty, or contains invalid values
+                if df[col].dtype in ['float64', 'int64']:
+                    # For numeric columns, remove null, inf, or zero values (for price)
+                    if 'price' in col.lower() or 'Price' in col:
+                        df = df[df[col].notna() & (df[col] > 0) & (df[col] != float('inf'))]
+                    else:
+                        df = df[df[col].notna() & (df[col] != float('inf'))]
+                else:
+                    # For text columns, remove null or empty strings
+                    df = df[df[col].notna() & (df[col] != '') & (df[col] != '--')]
+        
+        filtered_count = len(df)
+        removed_count = initial_count - filtered_count
+        
+        if removed_count > 0:
+            logger.info(f"Filtered out {removed_count} rows with missing essential data")
+            logger.info(f"Remaining records: {filtered_count}")
         
         return df
     
