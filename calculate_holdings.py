@@ -30,8 +30,9 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
         for ticker in tickers:
             value = factor.get(ticker, market)
             price = market.get_price(ticker)
-            if (isinstance(value, (int, float)) and not pd.isna(value)
-                and price is not None and not pd.isna(price) and price > 0):
+            # Only exclude if price is missing or not positive; allow zero factor values
+            if (price is not None and not pd.isna(price) and price > 0
+                and value is not None and not pd.isna(value)):
                 factor_values[ticker] = value
                 valid_tickers.append(ticker)
             else:
@@ -44,15 +45,17 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
         sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
 
         # Select the top 10% of securities (minimum 1)
+        if len(sorted_securities) == 0:
+            print("WARNING: No valid securities after filtering. Returning empty Portfolio object.")
+            return Portfolio(name=f"Portfolio_{market.t}")
         top_10_percent = sorted_securities[:max(1, len(sorted_securities) // 10)]
 
-        # Calculate number of shares for each selected security
         portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
         if len(top_10_percent) == 0:
             print("WARNING: No stocks passed the filtering criteria. Returning empty Portfolio object.")
             return portfolio_new
-        equal_investment = aum / len(top_10_percent)
 
+        equal_investment = aum / len(top_10_percent)
         for ticker, _ in top_10_percent:
             price = market.get_price(ticker)
             shares = equal_investment / price
