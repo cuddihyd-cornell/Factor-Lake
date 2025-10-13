@@ -101,19 +101,19 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
     benchmark_returns = []  # Store benchmark returns for comparison
     portfolio_values = [aum]  # track total AUM over time
 
+    # Use equal weights if not provided externally
+    weights = [1.0] * len(factors)
     for year in range(start_year, end_year):
-
         market = MarketObject(data.loc[data['Year'] == year], year)
-        yearly_portfolio = []
-
-        for factor in factors:
-            factor_portfolio = calculate_holdings(
-                factor=factor,
-                aum=aum / len(factors),
-                market=market,
-                restrict_fossil_fuels=restrict_fossil_fuels
-            )
-            yearly_portfolio.append(factor_portfolio)
+        # Build portfolio for this year using weighted factors
+        factor_portfolio = calculate_holdings(
+            factors=factors,
+            weights=weights,
+            aum=aum,
+            market=market,
+            restrict_fossil_fuels=restrict_fossil_fuels
+        )
+        yearly_portfolio = [factor_portfolio]
 
         if year < end_year:
             next_market = MarketObject(data.loc[data['Year'] == year + 1], year + 1)
@@ -124,16 +124,12 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
                       f"Start Value: ${total_start_value:.2f}, End Value: ${total_end_value:.2f}")
 
             aum = total_end_value  # Liquidate and reinvest
-
-            # Append annual return (growth) to portfolio_returns
             portfolio_returns.append(growth)
-
-            # Get benchmark return for the year (replace it as needed)
-            benchmark_return = get_benchmark_return(year)  # Define this function based on benchmark data
+            benchmark_return = get_benchmark_return(year)
             benchmark_returns.append(benchmark_return)
-            portfolio_values.append(aum)  # add current AUM to the list
+            portfolio_values.append(aum)
 
-        years.append(year+1) #adding next year to match portfolio_values
+        years.append(year+1)
 
     
     if verbosity is not None and verbosity >= 1:
