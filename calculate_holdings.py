@@ -32,12 +32,14 @@ def calculate_holdings(factors, weights, aum, market, restrict_fossil_fuels=Fals
     for ticker in tickers:
         price = market.get_price(ticker)
         if price is None or pd.isna(price) or price <= 0:
+            print(f"SKIP: {ticker} - Invalid price: {price}")
             continue
         values = []
         valid = True
         for factor in factors:
             value = factor.get(ticker, market)
             if value is None or pd.isna(value):
+                print(f"SKIP: {ticker} - Missing value for factor '{factor.column_name}': {value}")
                 valid = False
                 break
             values.append(value)
@@ -45,6 +47,7 @@ def calculate_holdings(factors, weights, aum, market, restrict_fossil_fuels=Fals
             continue
         # Weighted sum of factors
         score = sum(w * v for w, v in zip(weights, values))
+        print(f"PASS: {ticker} - Price: {price}, Factor values: {values}, Score: {score}")
         factor_scores[ticker] = score
 
     if not factor_scores:
