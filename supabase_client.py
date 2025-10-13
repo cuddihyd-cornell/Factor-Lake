@@ -56,22 +56,47 @@ class SupabaseDataClient:
             DataFrame with market data
         """
         try:
-            # Build query
-            query = self.client.table(table_name).select("*")
-            
-            # Add year filter if specified
+            # Fetch all rows with pagination to avoid default page limits
+            page_size = 1000
+            offset = 0
+            rows = []
+
+            # If a year filter is provided, filter by Date range on the server if possible
+            # Note: Column name uses exact case as in the DB schema ("Date")
+            base_query = self.client.table(table_name).select("*")
             if year_filter:
-                query = query.eq('year', year_filter)
-            
-            # Execute query
-            response = query.execute()
-            
-            if not response.data:
-                logger.warning(f"No data found in table '{table_name}'")
+                start_date = f"{year_filter}-01-01"
+                end_date = f"{year_filter}-12-31"
+                base_query = base_query.gte('Date', start_date).lte('Date', end_date)
+
+            # Use ID ordering for deterministic pagination if available
+            # If "ID" column doesn't exist, pagination will still work without ordering
+            try:
+                base_query = base_query.order('ID', desc=False)
+            except Exception:
+                pass
+
+            while True:
+                try:
+                    response = base_query.range(offset, offset + page_size - 1).execute()
+                except Exception as e:
+                    logger.error(f"Error during Supabase pagination (offset={offset}): {e}")
+                    raise
+
+                batch = response.data or []
+                if not batch:
+                    break
+                rows.extend(batch)
+                if len(batch) < page_size:
+                    break
+                offset += page_size
+
+            if not rows:
+                logger.warning(f"No data found in table '{table_name}' with the given filters")
                 return pd.DataFrame()
-            
+
             # Convert to DataFrame
-            df = pd.DataFrame(response.data)
+            df = pd.DataFrame(rows)
             
             # Apply fossil fuel restrictions if needed
             if restrict_fossil_fuels:

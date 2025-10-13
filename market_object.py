@@ -34,8 +34,16 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='All'):
             
             # Standardize column names to match existing code expectations
             rdata = _standardize_column_names(rdata)
-            
+
             print(f"Successfully loaded {len(rdata)} records from Supabase")
+            # Quick sanity check: distribution by Year after standardization
+            if 'Year' in rdata.columns:
+                try:
+                    year_counts = rdata['Year'].value_counts().sort_index()
+                    # Print a compact summary
+                    print("Rows per Year (Supabase):", ", ".join([f"{int(y)}: {int(c)}" for y, c in year_counts.items()]))
+                except Exception:
+                    pass
             return rdata
             
         except Exception as e:
