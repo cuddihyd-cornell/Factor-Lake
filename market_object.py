@@ -18,7 +18,7 @@ def load_data(restrict_fossil_fuels=False):
     response = supabase.table("FR2000 Annual Quant Data").select("*").execute()
     rdata = pd.DataFrame(response.data)
     # 🔍 Add this line to inspect the columns
-    # print("Supabase columns:", rdata.columns.tolist())
+    print("Supabase columns:", rdata.columns.tolist())
 
     # Strip whitespace from column names and remove duplicates
     rdata.columns = rdata.columns.str.strip()
