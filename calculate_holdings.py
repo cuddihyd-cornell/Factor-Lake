@@ -18,9 +18,9 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     print(f"DEBUG: Number of tickers in market: {len(market.stocks.index)}")
     print(f"DEBUG: Sample ticker values: {list(market.stocks.index[:5])}")
     
-    # Use 'ticker_region' for tickers if present, else fallback to index
-    if 'ticker_region' in market.stocks.columns:
-        tickers = market.stocks['ticker_region']
+    # Use 'Ticker-Region' for tickers if present, else fallback to index
+    if 'Ticker-Region' in market.stocks.columns:
+        tickers = market.stocks['Ticker-Region']
     else:
         tickers = market.stocks.index
 
