@@ -21,7 +21,8 @@ def load_data(restrict_fossil_fuels=False):
     # Strip whitespace from column names and remove duplicates
     rdata.columns = rdata.columns.str.strip()
     rdata = rdata.loc[:, ~rdata.columns.duplicated(keep='first')]
-
+    print("Columns in Supabase data:", rdata.columns.tolist())
+    
     # Add 'Ticker' column if missing
     if 'Ticker' not in rdata.columns and 'Ticker-Region' in rdata.columns:
         rdata['Ticker'] = rdata['Ticker-Region'].str.split('-').str[0].str.strip()
