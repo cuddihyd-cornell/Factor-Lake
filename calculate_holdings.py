@@ -18,9 +18,14 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     print(f"DEBUG: Number of tickers in market: {len(market.stocks.index)}")
     print(f"DEBUG: Sample ticker values: {list(market.stocks.index[:5])}")
     
-    # Access tickers directly from the index instead of the 'Ticker' column
+    # Use 'ticker_region' for tickers if present, else fallback to index
+    if 'ticker_region' in market.stocks.columns:
+        tickers = market.stocks['ticker_region']
+    else:
+        tickers = market.stocks.index
+
     factor_values = {}
-    for ticker in market.stocks.index:
+    for ticker in tickers:
         value = factor.get(ticker, market)
         if isinstance(value, (int, float)) and not pd.isna(value):
             factor_values[ticker] = value
@@ -39,7 +44,7 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     # Calculate number of shares for each selected security
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
     if len(top_10_percent) == 0:
-        print("WARNING: No stocks passed the filtering criteria. Returning empty portfolio.")
+        print("WARNING: No stocks passed the filtering criteria. Returning empty Portfolio object.")
         return portfolio_new
     equal_investment = aum / len(top_10_percent)
 
