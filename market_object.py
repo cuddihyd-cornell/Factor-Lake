@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import os
 
 # Load .env from repo folder
-load_dotenv("/content/Factor-Lake/supabase.env")
+load_dotenv("/content/Factor-Lake/.env")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
