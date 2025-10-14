@@ -78,3 +78,34 @@ def update_market_data(table_name: str, ticker: str):
         print(f"Update complete. {len(rows)} new records inserted into '{table_name}'.")
     except Exception as e:
         print(f"Insert error: {e}")
+
+
+
+def show_latest_records(table_name: str):
+    """
+    Display the 10 newest records from a Supabase table.
+
+    - Connects using existing Supabase client.
+    - Orders by date descending.
+    - Displays results as a DataFrame if available.
+    """
+    client = create_supabase_client()
+
+    try:
+        response = (
+            client.client.table(table_name)
+            .select("*")
+            .order("date", desc=True)
+            .limit(10)
+            .execute()
+        )
+
+        if not response.data:
+            print(f"No data found in '{table_name}'.")
+            return
+
+        df = pd.DataFrame(response.data)
+        print(f"Showing 10 newest records from '{table_name}':\n")
+        print(df)
+    except Exception as e:
+        print(f"Error fetching records: {e}")
