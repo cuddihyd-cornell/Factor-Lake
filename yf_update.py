@@ -1,7 +1,7 @@
 from supabase_client import create_supabase_client
 import pandas as pd
 import yfinance as yf
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import time
 
 def update_market_data(table_name: str, ticker: str, start_default: str = "2002-01-01"):
@@ -17,7 +17,7 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
         - Finds the latest date in Supabase.
         - Downloads new daily data from Yahoo Finance.
         - Filters out duplicates.
-        - Inserts new rows in safe batches.
+        - Inserts new rows in safe batches (upsert on conflict).
     """
     client = create_supabase_client()
     
@@ -55,14 +55,12 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
     # Flatten any multi-index columns returned by yfinance
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = ['_'.join([str(c) for c in col if c]) for col in data.columns]
-
-    # Force all column names to strings
-    data.columns = data.columns.astype(str)
+    data.columns = data.columns.map(str)
 
     df = data[["Close"]].reset_index()
   
     df["ticker"] = ticker
-    df["date"] = pd.to_datetime(df["Date"]).dt.date.astype(str)
+    df["date"] = pd.to_datetime(df["Date"]).dt.date   # store as Python date objects
     df.rename(columns={"Close": "close"}, inplace=True)
 
     df = df[["date", "ticker", "close"]]
@@ -70,7 +68,7 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
     # Deduplicate (skip dates already in Supabase)
     try:
         existing_resp = client.client.table(table_name).select("date").execute()
-        existing_dates = {row["date"] for row in existing_resp.data}
+        existing_dates = {pd.to_datetime(row["date"]).date() for row in existing_resp.data}
         before = len(df)
         df = df[~df["date"].isin(existing_dates)]
         print(f"Filtered out {before - len(df)} duplicates; {len(df)} new rows remain.")
@@ -81,17 +79,23 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
         print("No new rows to insert.")
         return
 
-    # Convert dataframe to dictionary (all str keys)
-    df.columns = df.columns.map(str)
-    rows = df.to_dict(orient="records")
+    # Convert dataframe to list of dicts with safe Python types
+    rows = []
+    for _, r in df.iterrows():
+        rows.append({
+            "date": r["date"],              # Python date type for Supabase DATE column
+            "ticker": str(r["ticker"]),
+            "close": float(r["close"]) if pd.notna(r["close"]) else None
+        })
 
+    # Insert or upsert in batches
     batch_size = 500
     total_inserted = 0
 
     for i in range(0, len(rows), batch_size):
         batch = rows[i:i + batch_size]
         try:
-            client.client.table(table_name).insert(batch).execute()
+            client.client.table(table_name).upsert(batch, on_conflict=["date", "ticker"]).execute()
             total_inserted += len(batch)
             time.sleep(0.3)
         except Exception as e:
@@ -101,4 +105,4 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
     print(f" Successfully inserted {total_inserted} new rows into {table_name}.")
 
 # Sample
-# update_market_data("RUT_yf", "^RUT")
+# update_market_data("RUT
