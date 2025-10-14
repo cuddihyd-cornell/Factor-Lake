@@ -1,8 +1,9 @@
 from supabase_client import create_supabase_client
 import pandas as pd
 import yfinance as yf
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta
 import time
+import json
 
 def update_market_data(table_name: str, ticker: str, start_default: str = "2002-01-01"):
     """
@@ -52,23 +53,21 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
         print("No new data available.")
         return
 
-    # Flatten any multi-index columns returned by yfinance
+    # Flatten multi-index columns
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = ['_'.join([str(c) for c in col if c]) for col in data.columns]
     data.columns = data.columns.map(str)
 
     df = data[["Close"]].reset_index()
-  
     df["ticker"] = ticker
-    df["date"] = pd.to_datetime(df["Date"]).dt.date   # store as Python date objects
+    df["date"] = pd.to_datetime(df["Date"]).dt.strftime("%Y-%m-%d")  # convert to ISO string
     df.rename(columns={"Close": "close"}, inplace=True)
-
     df = df[["date", "ticker", "close"]]
 
-    # Deduplicate (skip dates already in Supabase)
+    # Deduplicate
     try:
         existing_resp = client.client.table(table_name).select("date").execute()
-        existing_dates = {pd.to_datetime(row["date"]).date() for row in existing_resp.data}
+        existing_dates = {row["date"] for row in existing_resp.data}
         before = len(df)
         df = df[~df["date"].isin(existing_dates)]
         print(f"Filtered out {before - len(df)} duplicates; {len(df)} new rows remain.")
@@ -79,16 +78,31 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
         print("No new rows to insert.")
         return
 
-    # Convert dataframe to list of dicts with safe Python types
+    # Clean and convert to pure JSON-safe dicts
+    def make_safe(val):
+        if isinstance(val, (pd.Timestamp, datetime)):
+            return val.strftime("%Y-%m-%d")
+        if isinstance(val, (list, tuple)):
+            return str(val)
+        if pd.isna(val):
+            return None
+        if isinstance(val, (float, int, str, bool)) or val is None:
+            return val
+        return str(val)
+
     rows = []
     for _, r in df.iterrows():
-        rows.append({
-            "date": r["date"],              # Python date type for Supabase DATE column
-            "ticker": str(r["ticker"]),
-            "close": float(r["close"]) if pd.notna(r["close"]) else None
-        })
+        row = {
+            "date": make_safe(r["date"]),
+            "ticker": make_safe(r["ticker"]),
+            "close": make_safe(r["close"])
+        }
+        rows.append(row)
 
-    # Insert or upsert in batches
+    # Show one sample for debugging
+    print("Sample row to insert:", json.dumps(rows[0], indent=2))
+
+    # Batch insert
     batch_size = 500
     total_inserted = 0
 
@@ -100,9 +114,10 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
             time.sleep(0.3)
         except Exception as e:
             print(f"Error inserting batch {i // batch_size + 1}: {e}")
+            print("Problem batch example:", batch[:1])
             time.sleep(2)
 
     print(f" Successfully inserted {total_inserted} new rows into {table_name}.")
 
 # Sample
-# update_market_data("RUT
+# update_market_data("RUT_yf", "^RUT")
