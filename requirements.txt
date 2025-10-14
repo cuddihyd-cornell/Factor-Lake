@@ -5,3 +5,5 @@ scipy>=0.8.0
 supabase>=2.0.0
 
 supabase>=1.0.3
+
+yfinance>=0.2.40
