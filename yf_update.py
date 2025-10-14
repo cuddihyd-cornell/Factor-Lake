@@ -52,6 +52,10 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
         print("No new data available.")
         return
 
+    # Flatten any multi-index columns returned by yfinance
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = [col[0] if isinstance(col, tuple) else col for col in data.columns]
+
     df = data[["Close"]].reset_index()
   
     df["ticker"] = ticker
