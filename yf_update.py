@@ -3,22 +3,13 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
 import time
-import json
 
 def update_market_data(table_name: str, ticker: str, start_default: str = "2002-01-01"):
     """
-    Incrementally update a Supabase table with new Yahoo Finance data.
-
-    Args:
-        table_name (str): Supabase table name.
-        ticker (str): Yahoo Finance ticker symbol.
-        start_default (str): Default start date if the table is empty.
-    
-    Behavior:
-        - Finds the latest date in Supabase.
-        - Downloads new daily data from Yahoo Finance.
-        - Filters out duplicates.
-        - Inserts new rows in safe batches (upsert on conflict).
+    Simplified version for debugging:
+    - Prints raw yfinance data
+    - Prints final dataframe
+    - Prints exact rows being inserted
     """
     client = create_supabase_client()
     
@@ -44,66 +35,45 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
         start_date = start_default
 
     end_date = datetime.today().strftime("%Y-%m-%d")
+    print(f"\nFetching {ticker} data from {start_date} to {end_date}...\n")
 
-    # Download new data
-    print(f"Fetching {ticker} data from {start_date} to {end_date}...")
+    # --- Download from Yahoo Finance ---
     data = yf.download(ticker, start=start_date, end=end_date, progress=False)
+
+    # Print raw yfinance data
+    print("=== Raw yfinance output ===")
+    print(data.tail(10))  # print the last 10 rows
+    print("===========================\n")
 
     if data.empty:
         print("No new data available.")
         return
 
-    # Flatten any multi-index columns returned by yfinance
-    if isinstance(data.columns, pd.MultiIndex):
-        data.columns = ['_'.join([str(c) for c in col if c]) for col in data.columns]
-    data.columns = data.columns.map(str)
-
+    # --- Transform data into desired structure ---
     df = data[["Close"]].reset_index()
-  
     df["ticker"] = ticker
-    df["date"] = pd.to_datetime(df["Date"]).dt.strftime("%Y-%m-%d")
-    df.rename(columns={"Close": "close"}, inplace=True)
+    df.rename(columns={"Date": "date", "Close": "close"}, inplace=True)
     df = df[["date", "ticker", "close"]]
 
-    # Deduplicate (skip dates already in Supabase)
-    try:
-        existing_resp = client.client.table(table_name).select("date").execute()
-        existing_dates = {row["date"] for row in existing_resp.data}
-        before = len(df)
-        df = df[~df["date"].isin(existing_dates)]
-        print(f"Filtered out {before - len(df)} duplicates; {len(df)} new rows remain.")
-    except Exception as e:
-        print(f"Warning: Could not fetch existing dates ({e}); inserting all rows.")
+    # Print transformed DataFrame
+    print("=== Transformed DataFrame ===")
+    print(df.head(10))
+    print("=============================\n")
 
-    if len(df) == 0:
-        print("No new rows to insert.")
-        return
-
-    # Convert dataframe to list of dicts
+    # --- Prepare rows to insert ---
     rows = df.to_dict(orient="records")
 
-    # ===== DEBUG PRINT: SHOW EVERYTHING ABOUT TO BE INSERTED =====
-    print("\n============================================================")
-    print(f"About to insert {len(rows)} rows into {table_name}:")
-    print(json.dumps(rows, indent=2, default=str))
-    print("============================================================\n")
+    print("=== Rows about to insert ===")
+    for r in rows:
+        print(r)
+    print("=============================\n")
 
-    batch_size = 500
-    total_inserted = 0
+    # --- Try insert ---
+    try:
+        response = client.client.table(table_name).insert(rows).execute()
+        print(f"✅ Successfully inserted {len(rows)} rows into {table_name}")
+    except Exception as e:
+        print(f"❌ Insert error: {e}")
 
-    for i in range(0, len(rows), batch_size):
-        batch = rows[i:i + batch_size]
-        try:
-            client.client.table(table_name).upsert(batch, on_conflict=["date", "ticker"]).execute()
-            total_inserted += len(batch)
-            time.sleep(0.3)
-        except Exception as e:
-            print(f"Error inserting batch {i // batch_size + 1}: {e}")
-            print("Problem batch example:")
-            print(json.dumps(batch[:1], indent=2, default=str))
-            time.sleep(2)
-
-    print(f" Successfully inserted {total_inserted} new rows into {table_name}.")
-
-# Sample
+# Example call:
 # update_market_data("RUT_yf", "^RUT")
