@@ -27,7 +27,7 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
             print(f"⚠️ Unexpected error while checking table existence: {e}")
             return
 
-    # --- Step 2: Determine start date from latest entry ---
+    # --- Step 2: Determine start date ---
     try:
         response = (
             client.client.table(table_name)
@@ -53,7 +53,8 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
     print(f"\n📡 Fetching {ticker} data from {start_date} to {end_date}...\n")
 
     try:
-        data = yf.download(ticker, start=start_date, end=end_date, progress=False)
+        # Explicitly disable auto_adjust to avoid tuple columns
+        data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=False)
     except Exception as e:
         print(f"❌ yfinance download error: {e}")
         return
@@ -62,7 +63,10 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
         print("✅ No new data available. Table is already up to date.")
         return
 
-    # --- Step 4: Transform new data ---
+    # --- Step 4: Normalize columns (extra safety) ---
+    data.columns = data.columns.map(str)  # ensure no tuple or non-string column names
+
+    # --- Step 5: Transform new data ---
     df = data[["Close"]].reset_index()
     df.rename(columns={"Date": "date", "Close": "close"}, inplace=True)
     df["ticker"] = ticker
@@ -73,7 +77,7 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
     print(f"\nTotal new rows to insert: {len(df)}")
     print("========================================\n")
 
-    # --- Step 5: Insert new rows ---
+    # --- Step 6: Insert new rows ---
     rows = df.to_dict(orient="records")
     try:
         client.client.table(table_name).insert(rows).execute()
