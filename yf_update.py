@@ -53,18 +53,19 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
         print("No new data available.")
         return
 
-    # Flatten multi-index columns
+    # Flatten any multi-index columns returned by yfinance
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = ['_'.join([str(c) for c in col if c]) for col in data.columns]
     data.columns = data.columns.map(str)
 
     df = data[["Close"]].reset_index()
+  
     df["ticker"] = ticker
-    df["date"] = pd.to_datetime(df["Date"]).dt.strftime("%Y-%m-%d")  # convert to ISO string
+    df["date"] = pd.to_datetime(df["Date"]).dt.strftime("%Y-%m-%d")
     df.rename(columns={"Close": "close"}, inplace=True)
     df = df[["date", "ticker", "close"]]
 
-    # Deduplicate
+    # Deduplicate (skip dates already in Supabase)
     try:
         existing_resp = client.client.table(table_name).select("date").execute()
         existing_dates = {row["date"] for row in existing_resp.data}
@@ -78,31 +79,15 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
         print("No new rows to insert.")
         return
 
-    # Clean and convert to pure JSON-safe dicts
-    def make_safe(val):
-        if isinstance(val, (pd.Timestamp, datetime)):
-            return val.strftime("%Y-%m-%d")
-        if isinstance(val, (list, tuple)):
-            return str(val)
-        if pd.isna(val):
-            return None
-        if isinstance(val, (float, int, str, bool)) or val is None:
-            return val
-        return str(val)
+    # Convert dataframe to list of dicts
+    rows = df.to_dict(orient="records")
 
-    rows = []
-    for _, r in df.iterrows():
-        row = {
-            "date": make_safe(r["date"]),
-            "ticker": make_safe(r["ticker"]),
-            "close": make_safe(r["close"])
-        }
-        rows.append(row)
+    # ===== DEBUG PRINT: SHOW EVERYTHING ABOUT TO BE INSERTED =====
+    print("\n============================================================")
+    print(f"About to insert {len(rows)} rows into {table_name}:")
+    print(json.dumps(rows, indent=2, default=str))
+    print("============================================================\n")
 
-    # Show one sample for debugging
-    print("Sample row to insert:", json.dumps(rows[0], indent=2))
-
-    # Batch insert
     batch_size = 500
     total_inserted = 0
 
@@ -114,7 +99,8 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
             time.sleep(0.3)
         except Exception as e:
             print(f"Error inserting batch {i // batch_size + 1}: {e}")
-            print("Problem batch example:", batch[:1])
+            print("Problem batch example:")
+            print(json.dumps(batch[:1], indent=2, default=str))
             time.sleep(2)
 
     print(f" Successfully inserted {total_inserted} new rows into {table_name}.")
