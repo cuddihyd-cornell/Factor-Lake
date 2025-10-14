@@ -107,10 +107,9 @@ def show_latest_records(table_name: str):
 
         if not response.data:
             print(f"No data found in '{table_name}'.")
-            return
-
-        df = pd.DataFrame(response.data)
-        print(f"Showing 10 newest records from '{table_name}':\n")
-        print(df)
+        else:
+            df = pd.DataFrame(response.data)
+            print(f"Showing 10 newest records from '{table_name}':\n")
+            print(df)
     except Exception as e:
         print(f"Error fetching records: {e}")
