@@ -3,7 +3,8 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
 import json
-
+import functools
+print = functools.partial(print, flush=True)
 
 def update_market_data(table_name: str, ticker: str) -> None:
     """
