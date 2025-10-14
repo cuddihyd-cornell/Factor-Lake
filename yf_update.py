@@ -31,10 +31,10 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
             .execute()
         )
         if response.data and len(response.data) > 0:
-            latest_date_str = response.data[0]["date"]
+            latest_date_str = response.data[0]["Date"]
             latest_date = pd.to_datetime(latest_date_str)
             start_date = (latest_date + timedelta(days=1)).strftime("%Y-%m-%d")
-            print(f"Latest date in {table_name}: {latest_date.date()}")
+            print(f"Latest date in {table_name}: {latest_date.Date()}")
         else:
             start_date = start_default
             print(f"No existing data in {table_name}, downloading full history.")
