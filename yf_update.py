@@ -54,7 +54,10 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
 
     # Flatten any multi-index columns returned by yfinance
     if isinstance(data.columns, pd.MultiIndex):
-        data.columns = [col[0] if isinstance(col, tuple) else col for col in data.columns]
+        data.columns = ['_'.join([str(c) for c in col if c]) for col in data.columns]
+
+    # Force all column names to strings
+    data.columns = data.columns.astype(str)
 
     df = data[["Close"]].reset_index()
   
@@ -78,8 +81,10 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
         print("No new rows to insert.")
         return
 
-    # Insert in batches
+    # Convert dataframe to dictionary (all str keys)
+    df.columns = df.columns.map(str)
     rows = df.to_dict(orient="records")
+
     batch_size = 500
     total_inserted = 0
 
