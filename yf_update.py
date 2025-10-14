@@ -2,61 +2,54 @@ from supabase_client import create_supabase_client
 import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
-import json
-import functools
-print = functools.partial(print, flush=True)
 
-def update_market_data(table_name: str, ticker: str) -> None:
+def update_market_data(table_name: str, ticker: str):
     """
-    Update an existing Supabase table with new Yahoo Finance data.
-
-    Behavior:
-    - Uses existing Supabase connection (create_supabase_client)
-    - Fetches last available date from Supabase
-    - Downloads only new daily data for the given ticker
-    - Performs UPSERT on (date, ticker)
-    - Falls back to INSERT if unique constraint not found
-    - Prints debug info and results
+    Update existing Supabase table with new Yahoo Finance data.
+    - Checks if table exists.
+    - Gets latest available date.
+    - Downloads only missing data from Yahoo Finance.
+    - Flattens columns to avoid tuple keys.
+    - Inserts new rows (assumes table already exists).
     """
-
-    print(f"\nConnecting to Supabase for table '{table_name}'...")
     client = create_supabase_client()
-    print("Connected.\n")
 
-    # Verify table
+    # Step 1 — Verify table existence
     try:
         client.client.table(table_name).select("date").limit(1).execute()
-        print(f"Verified table '{table_name}' exists.\n")
+        print(f"Verified table '{table_name}' exists.")
     except Exception as e:
         if "does not exist" in str(e) or "not found" in str(e):
-            print(f"Table '{table_name}' does not exist. Please create it manually first.")
+            print(f"Table '{table_name}' does not exist. Please create it first.")
             return
-        print(f"Unexpected error while checking table existence: {e}")
-        return
+        else:
+            print(f"Error verifying table: {e}")
+            return
 
-    # Get latest date
+    # Step 2 — Find latest date
     try:
-        resp = (
+        response = (
             client.client.table(table_name)
             .select("date")
             .order("date", desc=True)
             .limit(1)
             .execute()
         )
-        if resp.data and len(resp.data) > 0:
-            latest_date = pd.to_datetime(resp.data[0]["date"])
+        if response.data and len(response.data) > 0:
+            latest_date_str = response.data[0]["date"]
+            latest_date = pd.to_datetime(latest_date_str)
             start_date = (latest_date + timedelta(days=1)).strftime("%Y-%m-%d")
             print(f"Latest date in {table_name}: {latest_date.date()}")
         else:
-            print(f"Table '{table_name}' is empty — nothing to update.")
+            print(f"No data in '{table_name}', cannot perform incremental update.")
             return
     except Exception as e:
-        print(f"Error determining latest date: {e}")
+        print(f"Error fetching latest date: {e}")
         return
 
-    # Download new data
+    # Step 3 — Download new data
     end_date = datetime.today().strftime("%Y-%m-%d")
-    print(f"\nFetching {ticker} data from {start_date} to {end_date}...\n")
+    print(f"Fetching {ticker} data from {start_date} to {end_date}...")
 
     try:
         data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=False)
@@ -65,57 +58,30 @@ def update_market_data(table_name: str, ticker: str) -> None:
         return
 
     if data.empty:
-        print("No new data available. Table already up to date.")
+        print("No new data available.")
         return
 
-    # Clean & transform
-    data = data.reset_index()
-    if "Close" not in data.columns:
-        print(f"'Close' column not found in yfinance data: {data.columns.tolist()}")
-        return
+    # Step 4 — Flatten MultiIndex columns
+    if isinstance(data.columns, pd.MultiIndex):
+        data.columns = ['_'.join([str(c) for c in col if c]).strip() for col in data.columns.values]
 
-    df = data[["Date", "Close"]].copy()
-    df.rename(columns={"Date": "date", "Close": "close"}, inplace=True)
+    # Step 5 — Identify correct Close column dynamically
+    close_col = [c for c in data.columns if c.lower().startswith("close")][0]
+
+    # Step 6 — Prepare DataFrame for insert
+    df = data.reset_index()[["Date", close_col]].rename(columns={"Date": "date", close_col: "close"})
     df["ticker"] = ticker
-    df["date"] = pd.to_datetime(df["date"]).dt.date.astype(str)
-    df["close"] = df["close"].astype(float)
     df = df[["date", "ticker", "close"]]
 
-    # Debug preview
-    print("========== NEW DATA PREVIEW ==========")
-    print(df.head(10))
-    print(f"Total new rows: {len(df)}")
-    print("======================================\n")
+    print(f"New rows fetched: {len(df)}")
+    print(df.head())
 
+    # Step 7 — Insert new rows
     rows = df.to_dict(orient="records")
-
-    print("========== ROW STRUCTURE CHECK ==========")
-    print(json.dumps(rows[:3], indent=2, ensure_ascii=False))
-    print("=========================================\n")
-
-    # UPSERT
-    print(f"Attempting UPSERT into '{table_name}' on conflict ['date', 'ticker'] ...")
     try:
-        resp = client.client.table(table_name).upsert(rows, on_conflict=["date", "ticker"]).execute()
-        print("UPSERT completed successfully.\n")
-        print("Response data preview:", resp.data[:5] if resp.data else "(no data returned)")
+        client.client.table(table_name).insert(rows).execute()
+        print(f"Successfully inserted {len(rows)} new rows into '{table_name}'.")
     except Exception as e:
-        print(f"Upsert failed: {e}")
-        print("Falling back to plain INSERT (no on_conflict)...")
-        try:
-            resp = client.client.table(table_name).insert(rows).execute()
-            print("INSERT completed successfully.")
-            print("Response data preview:", resp.data[:5] if resp.data else "(no data returned)")
-        except Exception as inner:
-            print(f"Insert also failed: {inner}")
-    print()
+        print(f"Insert error: {e}")
 
-    # Final preview
-    print(f"Preview of latest 5 rows from '{table_name}':")
-    try:
-        preview = client.client.table(table_name).select("*").order("date", desc=True).limit(5).execute()
-        print(json.dumps(preview.data or [], indent=2, ensure_ascii=False))
-    except Exception as e:
-        print("Preview fetch failed:", e)
-
-    print("\nUpdate complete.\n")
+    print("Update complete.")
