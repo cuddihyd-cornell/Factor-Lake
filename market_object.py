@@ -4,7 +4,7 @@ from supabase_client import create_supabase_client
 import os
 
 ### CREATING FUNCTION TO LOAD DATA ###
-def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='All'):
+def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000 Annual Quant Data'):
     """
     Load market data from either Supabase or Excel file (fallback).
     
