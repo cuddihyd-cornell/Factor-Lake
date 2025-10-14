@@ -3,16 +3,17 @@ import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
 
-
 def update_market_data(table_name: str, ticker: str):
     """
-    Update an existing Supabase table with new Yahoo Finance data.
-    Fetches data after the most recent date and inserts new rows.
+    Update existing Supabase table with new Yahoo Finance data.
+    
+    - Verifies that the table exists.
+    - Finds the latest date and downloads only missing records.
+    - Inserts new rows if available.
     """
-
     client = create_supabase_client()
 
-    # Verify that the target table exists
+    # Verify table existence
     try:
         client.client.table(table_name).select("date").limit(1).execute()
         print(f"Table '{table_name}' verified.")
@@ -20,10 +21,11 @@ def update_market_data(table_name: str, ticker: str):
         if "does not exist" in str(e) or "not found" in str(e):
             print(f"Table '{table_name}' does not exist. Please create it first.")
             return
-        print(f"Error verifying table: {e}")
-        return
+        else:
+            print(f"Error checking table existence: {e}")
+            return
 
-    # Retrieve the most recent date in the table
+    # Get latest record date
     try:
         response = (
             client.client.table(table_name)
@@ -37,45 +39,42 @@ def update_market_data(table_name: str, ticker: str):
             start_date = (latest_date + timedelta(days=1)).strftime("%Y-%m-%d")
             print(f"Latest record date: {latest_date.date()}")
         else:
-            print(f"No existing data in '{table_name}'. Nothing to update.")
+            print(f"No existing data found in '{table_name}'.")
             return
     except Exception as e:
-        print(f"Error fetching latest date: {e}")
+        print(f"Error retrieving latest date: {e}")
         return
 
-    # Download only the missing data from Yahoo Finance
+    # Download new data
     end_date = datetime.today().strftime("%Y-%m-%d")
     print(f"Fetching data for {ticker} from {start_date} to {end_date}...")
 
     try:
-        data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust=False)
+        data = yf.download(ticker, start=start_date, end=end_date, progress=False)
     except Exception as e:
-        print(f"Error downloading data: {e}")
+        print(f"Download error: {e}")
         return
 
     if data.empty:
-        print("No new data available.")
+        print("No new data available. Table is up to date.")
         return
 
-    # Flatten MultiIndex columns if present (yfinance sometimes returns tuples)
+    # Flatten columns if MultiIndex
     if isinstance(data.columns, pd.MultiIndex):
         data.columns = ['_'.join([str(c) for c in col if c]).strip() for col in data.columns.values]
 
-    # Identify the correct close column dynamically
-    close_col = [c for c in data.columns if c.lower().startswith("close")][0]
-
-    # Prepare data for insertion
-    df = data.reset_index()[["Date", close_col]].rename(columns={"Date": "date", close_col: "close"})
+    # Transform
+    close_col = [c for c in data.columns if "Close" in c][0]
+    df = data[[close_col]].reset_index()
+    df.rename(columns={close_col: "close", "Date": "date"}, inplace=True)
     df["ticker"] = ticker
+    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")  # <- FIX: ensure string
     df = df[["date", "ticker", "close"]]
 
-    rows = df.to_dict(orient="records")
-
-    # Insert the new records into the Supabase table
+    # Insert new data
     try:
+        rows = df.to_dict(orient="records")
         client.client.table(table_name).insert(rows).execute()
-        print(f"Inserted {len(rows)} new rows into '{table_name}'.")
+        print(f"Update complete. {len(rows)} new records inserted into '{table_name}'.")
     except Exception as e:
         print(f"Insert error: {e}")
-
-    print("Update complete.")
