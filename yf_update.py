@@ -47,7 +47,12 @@ def update_market_data(table_name: str, ticker: str):
 
     # Download new data
     end_date = datetime.today().strftime("%Y-%m-%d")
-    print(f"Fetching data for {ticker} from {start_date} to {end_date}...")
+    if start_date == end_date:
+        next_day = (pd.to_datetime(end_date) + timedelta(days=1)).strftime("%Y-%m-%d")
+        end_date = next_day
+        print(f"Fetching today's ({start_date}) data — only available after the market closes.")
+    else:
+        print(f"Fetching data for {ticker} from {start_date} to {end_date}...")
 
     try:
         data = yf.download(ticker, start=start_date, end=end_date, progress=False)
