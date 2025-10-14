@@ -25,13 +25,13 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
     try:
         response = (
             client.client.table(table_name)
-            .select("Date")
-            .order("Date", desc=True)
+            .select("date")
+            .order("date", desc=True)
             .limit(1)
             .execute()
         )
         if response.data and len(response.data) > 0:
-            latest_date_str = response.data[0]["Date"]
+            latest_date_str = response.data[0]["date"]
             latest_date = pd.to_datetime(latest_date_str)
             start_date = (latest_date + timedelta(days=1)).strftime("%Y-%m-%d")
             print(f"Latest date in {table_name}: {latest_date.date()}")
@@ -55,16 +55,17 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
     df = data[["Close"]].reset_index()
   
     df["ticker"] = ticker
-    df["Date"] = pd.to_datetime(df["Date"]).dt.date.astype(str)
+    df["date"] = pd.to_datetime(df["Date"]).dt.date.astype(str)
+    df.rename(columns={"Close": "close"}, inplace=True)
 
-    df = df[["Date", "ticker", "Close"]]
+    df = df[["date", "ticker", "close"]]
 
     # Deduplicate (skip dates already in Supabase)
     try:
-        existing_resp = client.client.table(table_name).select("Date").execute()
-        existing_dates = {row["Date"] for row in existing_resp.data}
+        existing_resp = client.client.table(table_name).select("date").execute()
+        existing_dates = {row["date"] for row in existing_resp.data}
         before = len(df)
-        df = df[~df["Date"].isin(existing_dates)]
+        df = df[~df["date"].isin(existing_dates)]
         print(f"Filtered out {before - len(df)} duplicates; {len(df)} new rows remain.")
     except Exception as e:
         print(f"Warning: Could not fetch existing dates ({e}); inserting all rows.")
@@ -92,4 +93,3 @@ def update_market_data(table_name: str, ticker: str, start_default: str = "2002-
 
 # Sample
 # update_market_data("RUT_yf", "^RUT")
-
