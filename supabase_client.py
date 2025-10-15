@@ -117,40 +117,34 @@ class SupabaseDataClient:
     
     def _apply_fossil_fuel_filter(self, df: pd.DataFrame) -> pd.DataFrame:
         """Apply fossil fuel industry filter to dataframe."""
-        # Try multiple possible column names
+        import re
         possible_cols = ['FactSet_Industry', 'factset_industry', 'FactSet Industry']
         industry_col = None
         for col in possible_cols:
             if col in df.columns:
                 industry_col = col
                 break
-        
         if industry_col is None:
             logger.warning(f"Column 'FactSet_Industry' not found. Fossil fuel filtering skipped.")
             return df
-        
-        # Specific industry names to exclude (matching Supabase format - no spaces)
+        # Excluded industries (normalized)
         excluded_industries = [
             "integratedoil",
-            "oilfieldservices/equipment", 
-            "oil&gasproduction",
+            "oilfieldservicesequipment",
+            "oilgasproduction",
             "coal",
-            "oilrefining/marketing"
+            "oilrefiningmarketing"
         ]
-        
-        # Get sample of unique industries for debugging
-        unique_industries = df[industry_col].dropna().unique()
-        logger.info(f"Found industry column: '{industry_col}'")
-        logger.info(f"Sample industries (first 10): {list(unique_industries[:10])}")
-        
-        # Filter out rows matching excluded industries (case-insensitive, already lowercase)
-        industry_values_lower = df[industry_col].astype(str).str.lower()
-        mask = ~industry_values_lower.isin(excluded_industries)
-        
+        # Normalize function: lowercase and remove non-alphanumeric
+        def normalize(s):
+            return re.sub(r'[^a-z0-9]', '', str(s).lower())
+        # Apply normalization to both data and excluded list
+        industry_norm = df[industry_col].apply(normalize)
+        excluded_norm = set(excluded_industries)
+        mask = ~industry_norm.isin(excluded_norm)
         filtered_df = df[mask].copy()
         removed_count = len(df) - len(filtered_df)
         logger.info(f"Filtered out {removed_count} fossil fuel companies from {len(df)} total records")
-        
         return filtered_df
     
     def _clean_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
