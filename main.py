@@ -17,12 +17,13 @@ def main():
 
     ### Optional: Filter out fossil fuel-related industries ###
     if restrict_fossil_fuels:
+        # Supabase format (no spaces in industry names)
         excluded_industries = [
-            "Integrated Oil",
-            "Oilfield Services/Equipment",
-            "Oil & Gas Production",
-            "Coal",
-            "Oil Refining/Marketing"
+            "integratedoil",
+            "oilfieldservices/equipment",
+            "oil&gasproduction",
+            "coal",
+            "oilrefining/marketing"
         ]
         # Try multiple possible column name variations
         industry_col = None
@@ -33,7 +34,8 @@ def main():
         
         if industry_col:
             original_len = len(rdata)
-            rdata = rdata[~rdata[industry_col].isin(excluded_industries)].copy()
+            # Case-insensitive comparison
+            rdata = rdata[~rdata[industry_col].astype(str).str.lower().isin(excluded_industries)].copy()
             print(f"Filtered out {original_len - len(rdata)} fossil fuel-related companies.")
             print(f"Excluded industries: {excluded_industries}")
         else:

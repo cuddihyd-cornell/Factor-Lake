@@ -129,20 +129,27 @@ class SupabaseDataClient:
             logger.warning(f"Column 'FactSet_Industry' not found. Fossil fuel filtering skipped.")
             return df
         
-        # Specific industry names to exclude (more precise than keywords)
+        # Specific industry names to exclude (matching Supabase format - no spaces)
         excluded_industries = [
-            "Integrated Oil",
-            "Oilfield Services/Equipment", 
-            "Oil & Gas Production",
-            "Coal",
-            "Oil Refining/Marketing"
+            "integratedoil",
+            "oilfieldservices/equipment", 
+            "oil&gasproduction",
+            "coal",
+            "oilrefining/marketing"
         ]
         
-        # Filter out rows matching excluded industries (case-insensitive)
-        mask = ~df[industry_col].astype(str).str.lower().isin([x.lower() for x in excluded_industries])
+        # Get sample of unique industries for debugging
+        unique_industries = df[industry_col].dropna().unique()
+        logger.info(f"Found industry column: '{industry_col}'")
+        logger.info(f"Sample industries (first 10): {list(unique_industries[:10])}")
+        
+        # Filter out rows matching excluded industries (case-insensitive, already lowercase)
+        industry_values_lower = df[industry_col].astype(str).str.lower()
+        mask = ~industry_values_lower.isin(excluded_industries)
         
         filtered_df = df[mask].copy()
-        logger.info(f"Filtered out {len(df) - len(filtered_df)} fossil fuel companies")
+        removed_count = len(df) - len(filtered_df)
+        logger.info(f"Filtered out {removed_count} fossil fuel companies from {len(df)} total records")
         
         return filtered_df
     
