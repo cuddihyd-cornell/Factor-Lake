@@ -27,8 +27,7 @@ def main():
             "mining",
             "drilling",
             "pipeline",
-            "refining",
-            "energy"
+            "refining"
         ]
         def is_fossil_fuel_industry(industry_name):
             if not isinstance(industry_name, str):
