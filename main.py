@@ -11,9 +11,18 @@ def main():
     ### Ask about fossil fuel restriction first ###
     restrict_fossil_fuels = get_fossil_fuel_restriction()  # Prompt user (Yes/No)
 
+    # Ask user if they want to use Supabase or Excel
+    use_supabase = False
+    try:
+        use_supabase_input = input("Load data from Supabase? (Yes/No): ").strip().lower()
+        if use_supabase_input in ["yes", "y"]:
+            use_supabase = True
+    except Exception:
+        pass
+
     ### Load market data (with or without restriction) ###
     print("Loading market data...")
-    rdata = load_data(restrict_fossil_fuels=restrict_fossil_fuels)
+    rdata = load_data(restrict_fossil_fuels=restrict_fossil_fuels, use_supabase=use_supabase)
 
     ### Optional: Filter out fossil fuel-related industries ###
     if restrict_fossil_fuels:

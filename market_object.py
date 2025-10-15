@@ -1,10 +1,23 @@
 import pandas as pd
 import numpy as np
+import os
 
-### CREATING FUNCTION TO LOAD DATA ###
-def load_data(restrict_fossil_fuels=False):
-    file_path = '/content/drive/My Drive/Cayuga Fund Factor Lake/FR2000 Annual Quant Data FOR RETURN SIMULATION.xlsx'
-    rdata = pd.read_excel(file_path, sheet_name='Data', header=2, skiprows=[3, 4])
+def load_data(restrict_fossil_fuels=False, use_supabase=False, table_name='FR2000 Annual Quant Data'):
+    rdata = None
+    # Try Supabase if requested or credentials are set
+    supabase_url = os.environ.get('SUPABASE_URL')
+    supabase_key = os.environ.get('SUPABASE_KEY')
+    if use_supabase or (supabase_url and supabase_key):
+        try:
+            from supabase_client import load_supabase_data
+            print("Loading data from Supabase...")
+            rdata = load_supabase_data(table_name)
+        except Exception as e:
+            print(f"Supabase load failed: {e}. Falling back to Excel.")
+    if rdata is None:
+        file_path = '/content/drive/My Drive/Cayuga Fund Factor Lake/FR2000 Annual Quant Data FOR RETURN SIMULATION.xlsx'
+        print("Loading data from Excel file...")
+        rdata = pd.read_excel(file_path, sheet_name='Data', header=2, skiprows=[3, 4])
 
     # Strip whitespace from column names and remove duplicates
     rdata.columns = rdata.columns.str.strip()
