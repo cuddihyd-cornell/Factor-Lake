@@ -3,12 +3,12 @@ from portfolio import Portfolio
 import numpy as np
 import pandas as pd
 
-def calculate_holdings(factors, weights, aum, market, restrict_fossil_fuels=False):
+# Single-factor portfolio construction (main branch logic)
+def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     """
     Build a portfolio using weighted factors from Supabase data.
     Args:
-        factors: list of factor objects (each with .column_name and .get())
-        weights: list of floats, same length as factors
+        factor: factor object (with .column_name and .get())
         aum: total assets under management
         market: MarketObject
         restrict_fossil_fuels: bool
@@ -25,49 +25,28 @@ def calculate_holdings(factors, weights, aum, market, restrict_fossil_fuels=Fals
             mask = col_vals.apply(lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
             market.stocks = market.stocks[mask]
 
-    # Always use the DataFrame index which is set to 'Ticker' in MarketObject
-    tickers = market.stocks.index
+    # Access tickers directly from the index instead of the 'Ticker' column
+    factor_values = {
+        ticker: factor.get(ticker, market)
+        for ticker in market.stocks.index
+        if isinstance(factor.get(ticker, market), (int, float))  # Ensure scalar values
+    }
 
-    factor_scores = {}
-    for ticker in tickers:
-        price = market.get_price(ticker)
-        if price is None or pd.isna(price) or price <= 0:
-            print(f"SKIP: {ticker} - Invalid price: {price}")
-            continue
-        values = []
-        valid = True
-        for factor in factors:
-            value = factor.get(ticker, market)
-            if value is None or pd.isna(value):
-                print(f"SKIP: {ticker} - Missing value for factor '{factor.column_name}': {value}")
-                valid = False
-                break
-            values.append(value)
-        if not valid:
-            continue
-        # Weighted sum of factors
-        score = sum(w * v for w, v in zip(weights, values))
-        print(f"PASS: {ticker} - Price: {price}, Factor values: {values}, Score: {score}")
-        factor_scores[ticker] = score
+    # Sort securities by factor values in descending order
+    sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
 
-    if not factor_scores:
-        print("WARNING: No valid securities after filtering. Returning empty Portfolio object.")
-        return Portfolio(name=f"Portfolio_{market.t}")
-
-    # Sort by weighted score
-    sorted_securities = sorted(factor_scores.items(), key=lambda x: x[1], reverse=True)
+    # Select the top 10% of securities
     top_10_percent = sorted_securities[:max(1, len(sorted_securities) // 10)]
 
+    # Calculate number of shares for each selected security
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
-    if len(top_10_percent) == 0:
-        print("WARNING: No stocks passed the filtering criteria. Returning empty Portfolio object.")
-        return portfolio_new
-
     equal_investment = aum / len(top_10_percent)
+
     for ticker, _ in top_10_percent:
         price = market.get_price(ticker)
-        shares = equal_investment / price
-        portfolio_new.add_investment(ticker, shares)
+        if price is not None and price > 0:
+            shares = equal_investment / price
+            portfolio_new.add_investment(ticker, shares)
 
     return portfolio_new
 
@@ -104,19 +83,18 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
     benchmark_returns = []  # Store benchmark returns for comparison
     portfolio_values = [aum]  # track total AUM over time
 
-    # Use equal weights if not provided externally
-    weights = [1.0] * len(factors)
     for year in range(start_year, end_year):
         market = MarketObject(data.loc[data['Year'] == year], year)
-        # Build portfolio for this year using weighted factors
-        factor_portfolio = calculate_holdings(
-            factors=factors,
-            weights=weights,
-            aum=aum,
-            market=market,
-            restrict_fossil_fuels=restrict_fossil_fuels
-        )
-        yearly_portfolio = [factor_portfolio]
+        yearly_portfolio = []
+
+        for factor in factors:
+            factor_portfolio = calculate_holdings(
+                factor=factor,
+                aum=aum / len(factors),
+                market=market,
+                restrict_fossil_fuels=restrict_fossil_fuels
+            )
+            yearly_portfolio.append(factor_portfolio)
 
         if year < end_year:
             next_market = MarketObject(data.loc[data['Year'] == year + 1], year + 1)
@@ -134,21 +112,19 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
 
         years.append(year+1)
 
-    
     if verbosity is not None and verbosity >= 1:
-
         print("\n==== Final Summary ====")
         print(f"Initial Portfolio Value: ${initial_aum:.2f}")
         # Calculate overall growth
         overall_growth = (aum - initial_aum) / initial_aum if initial_aum else 0
         print(f"Final Portfolio Value after {end_year}: ${aum:.2f}")
         print(f"Overall Growth from {start_year} to {end_year}: {overall_growth * 100:.2f}%")
-  
+
     # Calculate Information Ratio
     information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
     if information_ratio is None:
         print("Information Ratio could not be calculated due to zero tracking error.")
-        
+
     return {
         'final_value': aum,
         'yearly_returns': portfolio_returns,
