@@ -4,7 +4,7 @@ from supabase_client import create_supabase_client
 import os
 
 ### CREATING FUNCTION TO LOAD DATA ###
-def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='All'):
+def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000 Annual Quant Data'):
     """
     Load market data from either Supabase or Excel file (fallback).
     
@@ -104,47 +104,47 @@ def _standardize_column_names(df):
     except ImportError:
         # Fallback mapping if config is not available
         column_mapping = {
-            # Core columns
-            'id': 'ID',
-            'security_name': 'Security Name',
-            'ticker_region': 'Ticker-Region',
-            'russell_2000_port_weight': 'Russell 2000 Port. Weight',
-            'ending_price': 'Ending Price',
-            'market_capitalization': 'Market Capitalization',
-            'date': 'Date',
+ # Core columns
+            'ID': 'ID',
+            'Security_Name': 'Security_Name',
+            'Ticker-Region': 'Ticker-Region',
+            'Russell_2000_Port_Weight': 'Russell_2000_Port_Weight',
+            'Ending_Price': 'Ending_Price',
+            'Market_Capitalization': 'Market_Capitalization',
+            'Date': 'Date',
             'year': 'Year',
             'ticker': 'Ticker',
-            'factset_industry': 'FactSet Industry',
-            'scotts_sector_5': "Scott's Sector (5)",
+            'Factset_Industry': 'FactSet Industry',
+            'Scotts_Sector_5': "Scott's Sector (5)",
             
             # Factor columns
-            'roe_using_9_30_data': 'ROE using 9/30 Data',
-            'roa_using_9_30_data': 'ROA using 9/30 Data',
-            'momentum_12m_pct': '12-Mo Momentum %',
-            'momentum_6m_pct': '6-Mo Momentum %',
-            'momentum_1m_pct': '1-Mo Momentum %',
-            'price_to_book_using_9_30_data': 'Price to Book Using 9/30 Data',
-            'next_fy_earns_p': 'Next FY Earns/P',
-            'price_vol_1yr_pct': '1-Yr Price Vol %',
-            'accruals_assets': 'Accruals/Assets',
-            'roa_pct': 'ROA %',
-            'asset_growth_1yr_pct': '1-Yr Asset Growth %',
-            'capex_growth_1yr_pct': '1-Yr CapEX Growth %',
-            'book_price': 'Book/Price',
-            'next_year_return_pct': "Next-Year's Return %",
-            'next_year_active_return_pct': "Next-Year's Active Return %",
-            
+            'ROE_using_9-30_Data': 'ROE_using_9/30_Data',
+            'ROA_using_9-30_Data': 'ROA_using_9/30_Data',
+            '12-Mo_Momentum': '12-Mo_Momentum',
+            '6-Mo_Momentum': '6-Mo_Momentum',
+            '1-Mo_Momentum': '1-Mo_Momentum',
+            'Price_to_Book_Using_9-30_Data': 'Price_to_Book_Using_9-30_Data',
+            'Next_FY_Earns-P': 'Next_FY_Earns-P',
+            '1-Yr Price_Vol': '1-Yr Price_Vol',
+            'Accruals-Assets': 'Accruals-Assets',
+            'ROA': 'ROA',
+            '1-Yr_Asset_Growth': '1-Yr_Asset_Growth',
+            '1-Yr_CapEX_Growth': '1-Yr_CapEX_Growth',
+            'Book-Price': 'Book-Price',
+            'Next-Years_Return': 'Next-Years_Return',
+            'Next-Years_Active_Return': 'Next-Years_Active_Return',
+
             # Additional financial columns
-            'ni_millions': 'NI, $Millions',
-            'opcf_millions': 'OpCF, $Millions',
-            'latest_assets_millions': 'Latest Assets, $Millions',
-            'prior_year_assets_millions': "Prior Year's Assets, $Millions",
-            'book_value_per_share': 'Book Value Per Share $',
-            'capex_millions': 'CapEx, $Millions',
-            'prior_year_capex_millions': "Prior Year's CapEx, $Millions",
-            'earnings_surprise_pct': 'Earnings Surprise %',
-            'earnings_reported_last': 'Earnings Reported Last',
-            'avg_daily_3mo_volume_mills': 'Avg Daily 3-Mo Volume Mills $'
+            'NI_Millions': 'NI_Millions',
+            'OpCF_Millions': 'OpCF_Millions',
+            'Latest_Assets_Millions': 'Latest_Assets_Millions',
+            'Prior_Year_Assets_Millions': 'Prior_Year_Assets_Millions',
+            'Book_Value_Per_Share': 'Book_Value_Per_Share',
+            'CapEX_Millions': 'CapEX_Millions',
+            'Prior_Years_CapEx_Millions': 'Prior_Years_CapEx_Millions',
+            'Earnings_Surprise': 'Earnings_Surprise',
+            'EarningsReportedLast': 'EarningsReportedLast',
+            'Avg_Daily_3-Mo_Volume_Mills': 'Avg_Daily_3-Mo_Volume_Mills'
         }
     
     # Extend mapping to handle Supabase schema with Title_Case and underscores/hyphens
