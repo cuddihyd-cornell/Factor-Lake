@@ -15,15 +15,13 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     Returns:
         Portfolio object
     """
-    if restrict_fossil_fuels:
-        # Support both display and schema column names
-        possible_cols = ['FactSet Industry', 'FactSet_Industry']
-        industry_col = next((c for c in possible_cols if c in market.stocks.columns), None)
-        if industry_col:
-            fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
-            col_vals = market.stocks[industry_col].astype(str).str.lower()
-            mask = col_vals.apply(lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
-            market.stocks = market.stocks[mask]
+    # Apply sector restrictions if enabled
+    industry_col = 'FactSet_Industry'  # Use exact schema name
+    if restrict_fossil_fuels and industry_col in market.stocks.columns:
+        fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
+        mask = market.stocks[industry_col].astype(str).str.lower().apply(
+            lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
+        market.stocks = market.stocks[mask]
 
     # Access tickers directly from the index instead of the 'Ticker' column
     factor_values = {
