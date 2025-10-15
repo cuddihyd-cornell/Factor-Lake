@@ -71,7 +71,7 @@ def update_market_data(table_name: str, ticker: str):
     df = data[[close_col]].reset_index()
     df.rename(columns={close_col: "close", "Date": "date"}, inplace=True)
     df["ticker"] = ticker
-    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")  # <- FIX: ensure string
+    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")  # ensure string
     df = df[["date", "ticker", "close"]]
 
     # Insert new data
@@ -80,8 +80,11 @@ def update_market_data(table_name: str, ticker: str):
         client.client.table(table_name).insert(rows).execute()
         print(f"Update complete. {len(rows)} new records inserted into '{table_name}'.")
     except Exception as e:
-        print(f"Insert error: {e}")
-
+        # Handle duplicate-key error gracefully
+        if "duplicate key value violates unique constraint" in str(e):
+            print(f"{end_date} data is not yet available. Data already up to date.")
+        else:
+            print(f"Insert error: {e}")
 
 
 def show_latest_records(table_name: str):
