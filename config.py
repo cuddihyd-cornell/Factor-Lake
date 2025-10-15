@@ -14,7 +14,7 @@ SUPABASE_KEY = ""  # Your Supabase anon key or service role key
 # export SUPABASE_KEY="your_anon_key"
 
 # Database Configuration
-DEFAULT_TABLE_NAME = "All"  # Default table name for market data
+DEFAULT_TABLE_NAME = "FR2000 Annual Quant Data"  # Default table name for market data
 
 # All available columns from your Excel data
 ALL_COLUMNS = [
