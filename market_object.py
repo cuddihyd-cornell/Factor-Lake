@@ -147,8 +147,54 @@ def _standardize_column_names(df):
             'avg_daily_3mo_volume_mills': 'Avg Daily 3-Mo Volume Mills $'
         }
     
+    # Extend mapping to handle Supabase schema with Title_Case and underscores/hyphens
+    schema_to_display = {
+        # Core identification columns
+        'ID': 'ID',
+        'Security_Name': 'Security Name',
+        'Ticker-Region': 'Ticker-Region',
+        'Russell_2000_Port_Weight': 'Russell 2000 Port. Weight',
+        'Ending_Price': 'Ending Price',
+        'Market_Capitalization': 'Market Capitalization',
+        'Date': 'Date',
+        'FactSet_Industry': 'FactSet Industry',
+        'Scotts_Sector_5': "Scott's Sector (5)",
+
+        # Factor columns (used for portfolio construction)
+        'ROE_using_9-30_Data': 'ROE using 9/30 Data',
+        'ROA_using_9-30_Data': 'ROA using 9/30 Data',
+        'Price_to_Book_Using_9-30_Data': 'Price to Book Using 9/30 Data',
+        'Next_FY_Earns-P': 'Next FY Earns/P',
+        '12-Mo_Momentum': '12-Mo Momentum %',
+        '6-Mo_Momentum': '6-Mo Momentum %',
+        '1-Mo_Momentum': '1-Mo Momentum %',
+        '1-Yr_Price_Vol': '1-Yr Price Vol %',
+        'Accruals-Assets': 'Accruals/Assets',
+        'ROA': 'ROA %',
+        '1-Yr_Asset_Growth': '1-Yr Asset Growth %',
+        '1-Yr_CapEX_Growth': '1-Yr CapEX Growth %',
+        'Book-Price': 'Book/Price',
+        'Next-Years_Return': "Next-Year's Return %",
+        'Next-Years_Active_Return': "Next-Year's Active Return %",
+
+        # Financial data columns
+        'NI_Millions': 'NI, $Millions',
+        'OpCF_Millions': 'OpCF, $Millions',
+        'Latest_Assets_Millions': 'Latest Assets, $Millions',
+        'Prior_Years_Assets_Millions': "Prior Year's Assets, $Millions",
+        'Book_Value_Per_Share': 'Book Value Per Share $',
+        'CapEx_Millions': 'CapEx, $Millions',
+        'Prior_Years_CapEx_Millions': "Prior Year's CapEx, $Millions",
+        'Earnings_Surprise': 'Earnings Surprise %',
+        'EarningsReportedLast': 'Earnings Reported Last',
+        'Avg_Daily_3-Mo_Volume_Mills': 'Avg Daily 3-Mo Volume Mills $',
+    }
+
+    # Merge schema-specific mapping into the base mapping
+    full_mapping = {**schema_to_display, **column_mapping}
+
     # Apply column name mapping
-    df = df.rename(columns=column_mapping)
+    df = df.rename(columns=full_mapping)
     
     # Ensure required columns exist (with fallback logic)
     if 'Ticker' not in df.columns:
