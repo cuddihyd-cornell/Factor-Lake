@@ -2,6 +2,8 @@ from supabase_client import create_supabase_client
 import pandas as pd
 import yfinance as yf
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
 
 def update_market_data(table_name: str, ticker: str):
     """
@@ -10,6 +12,7 @@ def update_market_data(table_name: str, ticker: str):
     - Verifies that the table exists.
     - Finds the latest date and downloads only missing records.
     - Inserts new rows if available.
+    - Uses U.S. Eastern Time to determine when to stop fetching.
     """
     client = create_supabase_client()
 
@@ -45,13 +48,26 @@ def update_market_data(table_name: str, ticker: str):
         print(f"Error retrieving latest date: {e}")
         return
 
-    # Download new data
-    end_date = datetime.today().strftime("%Y-%m-%d")
-    if start_date == end_date:
-        print(f"Fetching today's ({start_date}) data — only available after the market closes.")
+    # Determine valid end_date based on U.S. Eastern market hours
+    now = datetime.now(ZoneInfo("America/New_York"))
+    today = now.strftime("%Y-%m-%d")
+    
+    # Do not retrieve intra-market data before closing
+    if now.hour < 18:
+        end_date = (datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d")
     else:
-        print(f"Fetching data for {ticker} from {start_date} to {end_date}...")
+        end_date = today
 
+    # Handle data availability logic
+    if pd.to_datetime(end_date) < pd.to_datetime(start_date):
+        print(f"{today} data is not yet available. Data already up to date.")
+        return
+    elif start_date == end_date:
+        print(f"Fetching today's data ({start_date})...")
+    else:
+        print(f"Fetching data from {start_date} to {end_date}...")
+
+    # Download new data
     try:
         data = yf.download(ticker, start=start_date, progress=False)
     except Exception as e:
@@ -71,7 +87,7 @@ def update_market_data(table_name: str, ticker: str):
     df = data[[close_col]].reset_index()
     df.rename(columns={close_col: "close", "Date": "date"}, inplace=True)
     df["ticker"] = ticker
-    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")  # ensure string
+    df["date"] = pd.to_datetime(df["date"]).dt.strftime("%Y-%m-%d")
     df = df[["date", "ticker", "close"]]
 
     # Insert new data
@@ -80,9 +96,8 @@ def update_market_data(table_name: str, ticker: str):
         client.client.table(table_name).insert(rows).execute()
         print(f"Update complete. {len(rows)} new records inserted into '{table_name}'.")
     except Exception as e:
-        # Handle duplicate-key error gracefully
         if "duplicate key value violates unique constraint" in str(e):
-            print(f"{end_date} data is not yet available. Data already up to date.")
+            print(f"Data already up to date.")
         else:
             print(f"Insert error: {e}")
 
