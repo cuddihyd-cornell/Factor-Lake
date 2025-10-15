@@ -283,7 +283,8 @@ class MarketObject():
             'ROA %', '1-Yr Asset Growth %', '1-Yr CapEX Growth %', 'Book/Price',
             "Next-Year's Return %", "Next-Year's Active Return %"
         ]
-        keep_cols = ['Ticker', 'Ending Price', 'Year', '6-Mo Momentum %'] + available_factors
+        # Keep Ticker-Region so we can index uniquely when present
+        keep_cols = ['Ticker-Region', 'Ticker', 'Ending Price', 'Year', '6-Mo Momentum %'] + available_factors
 
         # Filter and clean data
         data = data[[col for col in keep_cols if col in data.columns]].copy()
@@ -295,8 +296,12 @@ class MarketObject():
             if col in data.columns:
                 data[col] = pd.to_numeric(data[col], errors='coerce')
 
-        # Set 'Ticker' as the index for faster lookups
-        data.set_index('Ticker', inplace=True)
+        # Prefer 'Ticker-Region' as unique index; fallback to 'Ticker'
+        index_col = 'Ticker-Region' if 'Ticker-Region' in data.columns else 'Ticker'
+        try:
+            data.set_index(index_col, inplace=True)
+        except Exception:
+            pass
 
         self.stocks = data
         self.t = t
@@ -304,7 +309,14 @@ class MarketObject():
 
     def get_price(self, ticker):
         try:
-            price = self.stocks.at[ticker, 'Ending Price']
+            # Use .loc for robustness; handle multiple matches by taking the first valid
+            price = self.stocks.loc[ticker, 'Ending Price']
+            if isinstance(price, (pd.Series, np.ndarray)):
+                # Prefer first non-null value if duplicates exist
+                if hasattr(price, 'dropna') and not price.dropna().empty:
+                    price = price.dropna().iloc[0]
+                else:
+                    price = price.iloc[0] if hasattr(price, 'iloc') and len(price) > 0 else None
             # Check if price is valid (not NaN, not None, and positive)
             if pd.isna(price) or price is None or price <= 0:
                 if self.verbosity >= 2:
