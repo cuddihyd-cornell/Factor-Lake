@@ -117,22 +117,29 @@ class SupabaseDataClient:
     
     def _apply_fossil_fuel_filter(self, df: pd.DataFrame) -> pd.DataFrame:
         """Apply fossil fuel industry filter to dataframe."""
-        industry_col = 'factset_industry'  # Adjust column name as needed
+        # Try multiple possible column names
+        possible_cols = ['FactSet_Industry', 'factset_industry', 'FactSet Industry']
+        industry_col = None
+        for col in possible_cols:
+            if col in df.columns:
+                industry_col = col
+                break
         
-        if industry_col not in df.columns:
-            logger.warning(f"Column '{industry_col}' not found. Fossil fuel filtering skipped.")
+        if industry_col is None:
+            logger.warning(f"Column 'FactSet_Industry' not found. Fossil fuel filtering skipped.")
             return df
         
-        # Convert to lowercase for case-insensitive matching
-        df[industry_col] = df[industry_col].astype(str).str.lower()
+        # Specific industry names to exclude (more precise than keywords)
+        excluded_industries = [
+            "Integrated Oil",
+            "Oilfield Services/Equipment", 
+            "Oil & Gas Production",
+            "Coal",
+            "Oil Refining/Marketing"
+        ]
         
-        fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
-        
-        # Create mask to exclude fossil fuel companies
-        mask = df[industry_col].apply(
-            lambda x: not any(kw in str(x) for kw in fossil_keywords) 
-            if pd.notna(x) else True
-        )
+        # Filter out rows matching excluded industries (case-insensitive)
+        mask = ~df[industry_col].astype(str).str.lower().isin([x.lower() for x in excluded_industries])
         
         filtered_df = df[mask].copy()
         logger.info(f"Filtered out {len(df) - len(filtered_df)} fossil fuel companies")

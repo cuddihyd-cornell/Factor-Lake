@@ -20,13 +20,22 @@ def main():
         excluded_industries = [
             "Integrated Oil",
             "Oilfield Services/Equipment",
-            "Oil & Gas Production"
+            "Oil & Gas Production",
+            "Coal",
+            "Oil Refining/Marketing"
         ]
-        if 'FactSet Industry' in rdata.columns:
+        # Try multiple possible column name variations
+        industry_col = None
+        for col in ['FactSet Industry', 'FactSet_Industry']:
+            if col in rdata.columns:
+                industry_col = col
+                break
+        
+        if industry_col:
             original_len = len(rdata)
-            rdata = rdata[~rdata['FactSet Industry'].isin(excluded_industries)].copy()
+            rdata = rdata[~rdata[industry_col].isin(excluded_industries)].copy()
             print(f"Filtered out {original_len - len(rdata)} fossil fuel-related companies.")
-            print(f"Fossil Fuel Keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']")
+            print(f"Excluded industries: {excluded_industries}")
         else:
             print("Warning: 'FactSet Industry' column not found. Cannot apply fossil fuel filter.")
 
