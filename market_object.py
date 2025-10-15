@@ -95,61 +95,10 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000
 def _standardize_column_names(df):
     """
     Standardize column names from Supabase to match existing code expectations.
-    Converts snake_case (typical in databases) to the format expected by existing code.
+    Converts Supabase schema names (with underscores) to display names (with spaces/special chars).
     """
-    # Import column mapping from config
-    try:
-        from config import COLUMN_DISPLAY_NAMES
-        column_mapping = COLUMN_DISPLAY_NAMES
-    except ImportError:
-        # Fallback mapping if config is not available
-        column_mapping = {
- # Core columns
-            'ID': 'ID',
-            'Security_Name': 'Security_Name',
-            'Ticker-Region': 'Ticker-Region',
-            'Russell_2000_Port_Weight': 'Russell_2000_Port_Weight',
-            'Ending_Price': 'Ending_Price',
-            'Market_Capitalization': 'Market_Capitalization',
-            'Date': 'Date',
-            'year': 'Year',
-            'ticker': 'Ticker',
-            'Factset_Industry': 'FactSet Industry',
-            'Scotts_Sector_5': "Scott's Sector (5)",
-            
-            # Factor columns
-            'ROE_using_9-30_Data': 'ROE_using_9/30_Data',
-            'ROA_using_9-30_Data': 'ROA_using_9/30_Data',
-            '12-Mo_Momentum': '12-Mo_Momentum',
-            '6-Mo_Momentum': '6-Mo_Momentum',
-            '1-Mo_Momentum': '1-Mo_Momentum',
-            'Price_to_Book_Using_9-30_Data': 'Price_to_Book_Using_9-30_Data',
-            'Next_FY_Earns-P': 'Next_FY_Earns-P',
-            '1-Yr Price_Vol': '1-Yr Price_Vol',
-            'Accruals-Assets': 'Accruals-Assets',
-            'ROA': 'ROA',
-            '1-Yr_Asset_Growth': '1-Yr_Asset_Growth',
-            '1-Yr_CapEX_Growth': '1-Yr_CapEX_Growth',
-            'Book-Price': 'Book-Price',
-            'Next-Years_Return': 'Next-Years_Return',
-            'Next-Years_Active_Return': 'Next-Years_Active_Return',
-
-            # Additional financial columns
-            'NI_Millions': 'NI_Millions',
-            'OpCF_Millions': 'OpCF_Millions',
-            'Latest_Assets_Millions': 'Latest_Assets_Millions',
-            'Prior_Year_Assets_Millions': 'Prior_Year_Assets_Millions',
-            'Book_Value_Per_Share': 'Book_Value_Per_Share',
-            'CapEX_Millions': 'CapEX_Millions',
-            'Prior_Years_CapEx_Millions': 'Prior_Years_CapEx_Millions',
-            'Earnings_Surprise': 'Earnings_Surprise',
-            'EarningsReportedLast': 'EarningsReportedLast',
-            'Avg_Daily_3-Mo_Volume_Mills': 'Avg_Daily_3-Mo_Volume_Mills'
-        }
-    
-    # Extend mapping to handle Supabase schema with Title_Case and underscores/hyphens
     schema_to_display = {
-        # Core identification columns
+        # Core columns
         'ID': 'ID',
         'Security_Name': 'Security Name',
         'Ticker-Region': 'Ticker-Region',
@@ -177,7 +126,7 @@ def _standardize_column_names(df):
         'Next-Years_Return': "Next-Year's Return %",
         'Next-Years_Active_Return': "Next-Year's Active Return %",
 
-        # Financial data columns
+        # Additional financial columns
         'NI_Millions': 'NI, $Millions',
         'OpCF_Millions': 'OpCF, $Millions',
         'Latest_Assets_Millions': 'Latest Assets, $Millions',
@@ -190,11 +139,8 @@ def _standardize_column_names(df):
         'Avg_Daily_3-Mo_Volume_Mills': 'Avg Daily 3-Mo Volume Mills $',
     }
 
-    # Merge schema-specific mapping into the base mapping
-    full_mapping = {**schema_to_display, **column_mapping}
-
     # Apply column name mapping
-    df = df.rename(columns=full_mapping)
+    df = df.rename(columns=schema_to_display)
     
     # Ensure required columns exist (with fallback logic)
     if 'Ticker' not in df.columns:
