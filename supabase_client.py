@@ -1,63 +1,51 @@
-import os"""
-
-import pandas as pdSupabase client for Factor Lake data management.
-
-from supabase import create_client, ClientHandles connection, authentication, and data queries.
-
 """
-
-SUPABASE_URL = os.environ.get('SUPABASE_URL')import os
-
-SUPABASE_KEY = os.environ.get('SUPABASE_KEY')import pandas as pd
-
+Supabase client for Factor Lake data management.
+Handles connection, authentication, and data queries.
+"""
+import os
+import pandas as pd
 from supabase import create_client, Client
+from typing import Optional, Dict, Any
+import logging
 
-# Fallback: If running in Colab, allow user to set credentials manuallyfrom typing import Optional, Dict, Any
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-if SUPABASE_URL is None or SUPABASE_KEY is None:import logging
-
-    try:
-
-        from google.colab import userdata# Configure logging
-
-        SUPABASE_URL = userdata.get('SUPABASE_URL')logging.basicConfig(level=logging.INFO)
-
-        SUPABASE_KEY = userdata.get('SUPABASE_KEY')logger = logging.getLogger(__name__)
-
-    except ImportError:
-
-        pass
 
 class SupabaseDataClient:
-
-supabase: Client = None    """Client for interacting with Supabase database for Factor Lake data."""
-
-if SUPABASE_URL and SUPABASE_KEY:    
-
-    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)    def __init__(self, url: Optional[str] = None, key: Optional[str] = None):
-
+    """Client for interacting with Supabase database for Factor Lake data."""
+    
+    def __init__(self, url: Optional[str] = None, key: Optional[str] = None):
         """
-
         Initialize Supabase client.
-
-def load_supabase_data(table_name='FR2000 Annual Quant Data'):        
-
-    if supabase is None:        Args:
-
-        raise RuntimeError('Supabase credentials not set. Please set SUPABASE_URL and SUPABASE_KEY.')            url: Supabase project URL (or set SUPABASE_URL env var)
-
-    response = supabase.table(table_name).select('*').execute()            key: Supabase anon/service key (or set SUPABASE_KEY env var)
-
-    if hasattr(response, 'data'):        """
-
-        df = pd.DataFrame(response.data)        self.url = url or os.getenv('SUPABASE_URL')
-
-    else:        self.key = key or os.getenv('SUPABASE_KEY')
-
-        df = pd.DataFrame(response)        
-
-    return df        if not self.url or not self.key:
-
+        
+        Args:
+            url: Supabase project URL (or set SUPABASE_URL env var)
+            key: Supabase anon/service key (or set SUPABASE_KEY env var)
+        """
+        def load_supabase_data(table_name='FR2000 Annual Quant Data'):
+            # Get credentials from environment or Colab
+            supabase_url = os.environ.get('SUPABASE_URL')
+            supabase_key = os.environ.get('SUPABASE_KEY')
+            if supabase_url is None or supabase_key is None:
+                try:
+                    from google.colab import userdata
+                    supabase_url = userdata.get('SUPABASE_URL')
+                    supabase_key = userdata.get('SUPABASE_KEY')
+                except Exception:
+                    pass
+            if not supabase_url or not supabase_key:
+                raise RuntimeError('Supabase credentials not set. Please set SUPABASE_URL and SUPABASE_KEY.')
+            supabase = create_client(supabase_url, supabase_key)
+            response = supabase.table(table_name).select('*').execute()
+            if hasattr(response, 'data'):
+                df = pd.DataFrame(response.data)
+            else:
+                df = pd.DataFrame(response)
+            return df
+        
+        if not self.url or not self.key:
             raise ValueError(
                 "Supabase URL and key required. Set SUPABASE_URL and SUPABASE_KEY "
                 "environment variables or pass them directly to constructor."
