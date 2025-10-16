@@ -11,18 +11,8 @@ def main():
     ### Ask about fossil fuel restriction first ###
     restrict_fossil_fuels = get_fossil_fuel_restriction()  # Prompt user (Yes/No)
 
-    # Ask user if they want to use Supabase or Excel
-    use_supabase = False
-    try:
-        use_supabase_input = input("Load data from Supabase? (Yes/No): ").strip().lower()
-        if use_supabase_input in ["yes", "y"]:
-            use_supabase = True
-    except Exception:
-        pass
-
-    ### Load market data (with or without restriction) ###
-    print("Loading market data...")
-    rdata = load_data(restrict_fossil_fuels=restrict_fossil_fuels, use_supabase=use_supabase)
+    # Always load market data from Supabase
+    rdata = load_data(restrict_fossil_fuels=restrict_fossil_fuels, use_supabase=True)
 
     ### Optional: Filter out fossil fuel-related industries ###
     if restrict_fossil_fuels:
@@ -46,16 +36,14 @@ def main():
         if 'FactSet Industry' in rdata.columns:
             original_len = len(rdata)
             rdata = rdata[~rdata['FactSet Industry'].apply(is_fossil_fuel_industry)].copy()
-            print(f"Filtered out {original_len - len(rdata)} companies with fossil fuel keywords in industry name.")
-            print(f"Fossil Fuel Keywords = {fossil_fuel_keywords}")
         else:
-            print("Warning: 'FactSet Industry' column not found. Cannot apply fossil fuel filter.")
+            pass
 
     ### Data preprocessing ###
-    print("Processing market data...")
+    # ...existing code...
     
     # Debug: show available columns
-    print(f"Available columns: {list(rdata.columns)}")
+    # ...existing code...
     
     rdata['Ticker'] = rdata['Ticker-Region'].dropna().apply(lambda x: x.split('-')[0].strip())
     rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
@@ -90,7 +78,7 @@ def main():
     factor_objects, factor_names = (zip(*factors) if factors else ([], []))
 
     ### Rebalancing portfolio across years ###
-    print("\nRebalancing portfolio...")
+    # ...existing code...
     results = rebalance_portfolio(
         rdata, list(factor_objects),
         start_year=2002, end_year=2023,

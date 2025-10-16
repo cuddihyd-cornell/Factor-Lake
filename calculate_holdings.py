@@ -13,11 +13,7 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
                 lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
             market.stocks = market.stocks[mask]
 
-    # Debug: check what columns are available
-    if len(market.stocks) > 0:
-        print(f"DEBUG: Market has {len(market.stocks)} stocks with columns: {list(market.stocks.columns)[:10]}...")
-        print(f"DEBUG: Looking for factor column: '{factor.column_name}'")
-        print(f"DEBUG: Column exists: {factor.column_name in market.stocks.columns}")
+    # ...existing code...
 
     factor_values = {
         ticker: factor.get(ticker, market)
@@ -25,11 +21,9 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
         if isinstance(factor.get(ticker, market), (int, float))
     }
     
-    print(f"DEBUG: Found {len(factor_values)} valid factor values out of {len(market.stocks)} stocks")
+    # ...existing code...
     
     if len(factor_values) == 0:
-        print(f"ERROR: No valid factor values found for factor '{factor.column_name}' in year {market.t}")
-        print(f"Available columns: {list(market.stocks.columns)}")
         # Return empty portfolio instead of crashing
         return Portfolio(name=f"Portfolio_{market.t}")
     
