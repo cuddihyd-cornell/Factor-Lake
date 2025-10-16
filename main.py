@@ -53,6 +53,10 @@ def main():
 
     ### Data preprocessing ###
     print("Processing market data...")
+    
+    # Debug: show available columns
+    print(f"Available columns: {list(rdata.columns)}")
+    
     rdata['Ticker'] = rdata['Ticker-Region'].dropna().apply(lambda x: x.split('-')[0].strip())
     rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
 
@@ -63,7 +67,20 @@ def main():
         '1-Yr Asset Growth %', '1-Yr CapEX Growth %', 'Book/Price',
         "Next-Year's Return %", "Next-Year's Active Return %"
     ]
-    rdata = rdata[['Ticker', 'Ending Price', 'Year'] + available_factors]
+    
+    # Only select columns that actually exist
+    cols_to_keep = ['Ticker', 'Year']
+    if 'Ending Price' in rdata.columns:
+        cols_to_keep.append('Ending Price')
+    elif 'Ending_Price' in rdata.columns:
+        rdata['Ending Price'] = rdata['Ending_Price']
+        cols_to_keep.append('Ending Price')
+    
+    for factor in available_factors:
+        if factor in rdata.columns:
+            cols_to_keep.append(factor)
+    
+    rdata = rdata[cols_to_keep]
 
     ### Get user selections ###
     factors = get_factors(available_factors)

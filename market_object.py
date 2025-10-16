@@ -157,9 +157,11 @@ def _standardize_column_names(df):
         'FactSet_Industry': 'FactSet Industry',
         'Scotts_Sector_5': "Scott's Sector (5)",
 
-        # Factor columns - EXACT Supabase format with hyphens
+        # Factor columns - with BOTH formats (9-30 and 9/30 after partial conversion)
         'ROE_using_9-30_Data': 'ROE using 9/30 Data',
+        'ROE_using_9/30_Data': 'ROE using 9/30 Data',  # After partial conversion
         'ROA_using_9-30_Data': 'ROA using 9/30 Data',
+        'ROA_using_9/30_Data': 'ROA using 9/30 Data',  # After partial conversion
         'Price_to_Book_Using_9-30_Data': 'Price to Book Using 9/30 Data',
         'Next_FY_Earns-P': 'Next FY Earns/P',
         '12-Mo_Momentum': '12-Mo Momentum %',
