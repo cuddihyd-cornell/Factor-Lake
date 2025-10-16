@@ -24,19 +24,8 @@ class SupabaseDataClient:
             url: Supabase project URL (or set SUPABASE_URL env var)
             key: Supabase anon/service key (or set SUPABASE_KEY env var)
         """
-        def load_supabase_data(table_name='FR2000 Annual Quant Data'):
-            # Get credentials from environment or Colab
-            supabase_url = os.environ.get('SUPABASE_URL')
-            supabase_key = os.environ.get('SUPABASE_KEY')
-            if not supabase_url or not supabase_key:
-                raise RuntimeError('Supabase credentials not set. Please set SUPABASE_URL and SUPABASE_KEY.')
-            supabase = create_client(supabase_url, supabase_key)
-            response = supabase.table(table_name).select('*').execute()
-            if hasattr(response, 'data'):
-                df = pd.DataFrame(response.data)
-            else:
-                df = pd.DataFrame(response)
-            return df
+        self.url = url or os.getenv('SUPABASE_URL')
+        self.key = key or os.getenv('SUPABASE_KEY')
         
         if not self.url or not self.key:
             raise ValueError(
@@ -52,7 +41,7 @@ class SupabaseDataClient:
             raise
     
     def load_market_data(self, 
-                        table_name: str = 'FR2000 Annual Quant Data',
+                        table_name: str = 'market_data',
                         year_filter: Optional[int] = None,
                         restrict_fossil_fuels: bool = False) -> pd.DataFrame:
         """
