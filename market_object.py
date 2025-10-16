@@ -26,6 +26,10 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000
                 print("Warning: No data loaded from Supabase. Check your table and connection.")
                 return rdata
             
+            # Debug: print columns BEFORE standardization
+            print(f"DEBUG: Columns loaded from Supabase (first 20): {list(rdata.columns)[:20]}")
+            print(f"DEBUG: Total columns loaded: {len(rdata.columns)}")
+            
             # Standardize column names to match existing code expectations
             rdata = _standardize_column_names(rdata)
             

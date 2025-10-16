@@ -12,7 +12,7 @@ plt.switch_backend('Agg')
 
 # Set Supabase credentials
 os.environ['SUPABASE_URL'] = 'https://ozusfgnnzanaxpcfidbm.supabase.co'
-os.environ['SUPABASE_KEY'] = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96dXNmZ25uemFuYXhwY2ZpZGJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ2NDE4MTcsImV4cCI6MjA1MDIxNzgxN30.4LN6_PyVKM3BdygFWVdeZrirAVA_AxZFyNAA'
+os.environ['SUPABASE_KEY'] = 'sb_publishable_PyVKM3BdygFWVdeZrirAVA_AxZFyNAA'
 
 # Add current directory to path
 current_dir = os.path.dirname(os.path.abspath(__file__))
