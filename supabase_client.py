@@ -1,44 +1,29 @@
-"""
-Supabase client for Factor Lake data management.
-Handles connection, authentication, and data queries.
-"""
 import os
 import pandas as pd
 from supabase import create_client, Client
-from typing import Optional, Dict, Any
-import logging
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
-class SupabaseDataClient:
-    """Client for interacting with Supabase database for Factor Lake data."""
-    
-    def __init__(self, url: Optional[str] = None, key: Optional[str] = None):
-        """
-        Initialize Supabase client.
-        
-        Args:
-            url: Supabase project URL (or set SUPABASE_URL env var)
-            key: Supabase anon/service key (or set SUPABASE_KEY env var)
-        """
-        self.url = url or os.getenv('SUPABASE_URL')
-        self.key = key or os.getenv('SUPABASE_KEY')
-        
-        if not self.url or not self.key:
-            raise ValueError(
-                "Supabase URL and key required. Set SUPABASE_URL and SUPABASE_KEY "
-                "environment variables or pass them directly to constructor."
-            )
-        
+def load_supabase_data(table_name='FR2000 Annual Quant Data'):
+    """
+    Loads data from a Supabase table and returns it as a pandas DataFrame.
+    Credentials are read from environment variables or Colab userdata.
+    """
+    supabase_url = os.environ.get('SUPABASE_URL')
+    supabase_key = os.environ.get('SUPABASE_KEY')
+    if not supabase_url or not supabase_key:
         try:
-            self.client: Client = create_client(self.url, self.key)
-            logger.info("Successfully connected to Supabase")
-        except Exception as e:
-            logger.error(f"Failed to connect to Supabase: {e}")
-            raise
+            from google.colab import userdata
+            supabase_url = userdata.get('SUPABASE_URL')
+            supabase_key = userdata.get('SUPABASE_KEY')
+        except Exception:
+            pass
+    if not supabase_url or not supabase_key:
+        raise RuntimeError('Supabase credentials not set. Please set SUPABASE_URL and SUPABASE_KEY.')
+    supabase = create_client(supabase_url, supabase_key)
+    response = supabase.table(table_name).select('*').execute()
+    if hasattr(response, 'data'):
+        return pd.DataFrame(response.data)
+    else:
+        return pd.DataFrame(response)
     
     def load_market_data(self, 
                         table_name: str = 'market_data',
@@ -261,15 +246,3 @@ class SupabaseDataClient:
             return []
 
 
-def create_supabase_client(url: Optional[str] = None, key: Optional[str] = None) -> SupabaseDataClient:
-    """
-    Factory function to create a SupabaseDataClient instance.
-    
-    Args:
-        url: Supabase project URL (optional if set in env vars)
-        key: Supabase key (optional if set in env vars)
-        
-    Returns:
-        Configured SupabaseDataClient instance
-    """
-    return SupabaseDataClient(url, key)
