@@ -6,6 +6,7 @@ def load_supabase_data(table_name='FR2000 Annual Quant Data'):
     """
     Loads data from a Supabase table and returns it as a pandas DataFrame.
     Credentials are read from environment variables or Colab userdata.
+    Uses pagination to load all records.
     """
     supabase_url = os.environ.get('SUPABASE_URL')
     supabase_key = os.environ.get('SUPABASE_KEY')
@@ -18,12 +19,36 @@ def load_supabase_data(table_name='FR2000 Annual Quant Data'):
             pass
     if not supabase_url or not supabase_key:
         raise RuntimeError('Supabase credentials not set. Please set SUPABASE_URL and SUPABASE_KEY.')
+    
     supabase = create_client(supabase_url, supabase_key)
-    response = supabase.table(table_name).select('*').execute()
-    if hasattr(response, 'data'):
-        return pd.DataFrame(response.data)
-    else:
-        return pd.DataFrame(response)
+    
+    # Paginate through all records
+    page_size = 1000
+    offset = 0
+    all_rows = []
+    
+    print(f"Loading data from Supabase table '{table_name}'...")
+    
+    while True:
+        # Fetch a page of data
+        response = supabase.table(table_name).select('*').range(offset, offset + page_size - 1).execute()
+        
+        batch = response.data if hasattr(response, 'data') else response
+        
+        if not batch:
+            break
+        
+        all_rows.extend(batch)
+        print(f"Loaded {len(all_rows)} records so far...")
+        
+        # If we got fewer records than page_size, we're done
+        if len(batch) < page_size:
+            break
+        
+        offset += page_size
+    
+    print(f"Total records loaded: {len(all_rows)}")
+    return pd.DataFrame(all_rows)
     
     def load_market_data(self, 
                         table_name: str = 'market_data',
