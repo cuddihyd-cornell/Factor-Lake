@@ -28,13 +28,6 @@ class SupabaseDataClient:
             # Get credentials from environment or Colab
             supabase_url = os.environ.get('SUPABASE_URL')
             supabase_key = os.environ.get('SUPABASE_KEY')
-            if supabase_url is None or supabase_key is None:
-                try:
-                    from google.colab import userdata
-                    supabase_url = userdata.get('SUPABASE_URL')
-                    supabase_key = userdata.get('SUPABASE_KEY')
-                except Exception:
-                    pass
             if not supabase_url or not supabase_key:
                 raise RuntimeError('Supabase credentials not set. Please set SUPABASE_URL and SUPABASE_KEY.')
             supabase = create_client(supabase_url, supabase_key)
