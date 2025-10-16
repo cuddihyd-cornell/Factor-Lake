@@ -19,14 +19,8 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000
     
     if use_supabase:
         try:
-            # Create Supabase client
-            client = create_supabase_client()
-            
             # Load data from Supabase
-            rdata = client.load_market_data(
-                table_name=table_name,
-                restrict_fossil_fuels=restrict_fossil_fuels
-            )
+            rdata = load_supabase_data(table_name)
             
             if rdata.empty:
                 print("Warning: No data loaded from Supabase. Check your table and connection.")
