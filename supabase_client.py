@@ -49,11 +49,6 @@ def load_supabase_data(table_name='FR2000 Annual Quant Data'):
     
     print(f"Total records loaded: {len(all_rows)}")
     
-    # Debug: Print columns in the data
-    if all_rows:
-        print(f"DEBUG: Columns in Supabase table (first 20): {list(all_rows[0].keys())[:20]}")
-        print(f"DEBUG: Total columns in table: {len(all_rows[0].keys())}")
-    
     return pd.DataFrame(all_rows)
     
     def load_market_data(self, 
