@@ -28,6 +28,9 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000
             
             # Standardize column names to match existing code expectations
             rdata = _standardize_column_names(rdata)
+            
+            # Debug: print actual columns after standardization
+            print(f"Columns after standardization: {list(rdata.columns)[:10]}...")
 
             print(f"Successfully loaded {len(rdata)} records from Supabase")
             # Quick sanity check: distribution by Year after standardization
@@ -141,9 +144,9 @@ def _standardize_column_names(df):
             'Avg_Daily_3-Mo_Volume_Mills': 'Avg_Daily_3-Mo_Volume_Mills'
         }
     
-    # Extend mapping to handle Supabase schema with Title_Case and underscores/hyphens
+    # Extend mapping to handle Supabase schema - EXACT matches from Supabase
     schema_to_display = {
-        # Core identification columns
+        # Core identification columns (exact Supabase format)
         'ID': 'ID',
         'Security_Name': 'Security Name',
         'Ticker-Region': 'Ticker-Region',
@@ -154,7 +157,7 @@ def _standardize_column_names(df):
         'FactSet_Industry': 'FactSet Industry',
         'Scotts_Sector_5': "Scott's Sector (5)",
 
-        # Factor columns (used for portfolio construction)
+        # Factor columns - EXACT Supabase format with hyphens
         'ROE_using_9-30_Data': 'ROE using 9/30 Data',
         'ROA_using_9-30_Data': 'ROA using 9/30 Data',
         'Price_to_Book_Using_9-30_Data': 'Price to Book Using 9/30 Data',
