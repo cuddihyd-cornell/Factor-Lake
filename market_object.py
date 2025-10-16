@@ -308,22 +308,22 @@ class MarketObject():
         self.verbosity = verbosity
 
     def get_price(self, ticker):
-        try:
-            # Use .loc for robustness; handle multiple matches by taking the first valid
-            price = self.stocks.loc[ticker, 'Ending Price']
-            if isinstance(price, (pd.Series, np.ndarray)):
-                # Prefer first non-null value if duplicates exist
-                if hasattr(price, 'dropna') and not price.dropna().empty:
-                    price = price.dropna().iloc[0]
-                else:
-                    price = price.iloc[0] if hasattr(price, 'iloc') and len(price) > 0 else None
-            # Check if price is valid (not NaN, not None, and positive)
-            if pd.isna(price) or price is None or price <= 0:
-                if self.verbosity >= 2:
-                    print(f"{ticker} - invalid price ({price}) for {self.t} - SKIPPING")
-                return None
-            return price
-        except KeyError:
-            if self.verbosity >= 2:
-                print(f"{ticker} - not found in market data for {self.t} - SKIPPING")
-            return None
+        # Try both 'Ending Price' and 'Ending_Price' for compatibility
+        for price_col in ['Ending Price', 'Ending_Price']:
+            try:
+                price = self.stocks.loc[ticker, price_col]
+                if isinstance(price, (pd.Series, np.ndarray)):
+                    if hasattr(price, 'dropna') and not price.dropna().empty:
+                        price = price.dropna().iloc[0]
+                    else:
+                        price = price.iloc[0] if hasattr(price, 'iloc') and len(price) > 0 else None
+                if pd.isna(price) or price is None or price <= 0:
+                    if self.verbosity >= 2:
+                        print(f"{ticker} - invalid price ({price}) for {self.t} - SKIPPING")
+                    return None
+                return price
+            except KeyError:
+                continue
+        if self.verbosity >= 2:
+            print(f"{ticker} - not found in market data for {self.t} - SKIPPING")
+        return None
