@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from supabase_client import create_supabase_client
+from supabase_client import load_supabase_data
 import os
 
 ### CREATING FUNCTION TO LOAD DATA ###
