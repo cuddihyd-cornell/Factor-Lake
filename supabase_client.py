@@ -59,7 +59,7 @@ class SupabaseDataClient:
             raise
     
     def load_market_data(self, 
-                        table_name: str = 'market_data',
+                        table_name: str = 'FR2000 Annual Quant Data',
                         year_filter: Optional[int] = None,
                         restrict_fossil_fuels: bool = False) -> pd.DataFrame:
         """
