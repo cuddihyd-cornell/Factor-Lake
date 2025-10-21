@@ -66,12 +66,14 @@ def update_market_data(table_name: str, ticker: str):
         return
     elif start_date == end_date:
         print(f"Fetching today's data ({start_date})...")
+        end_date = (pd.to_datetime(end_date) + timedelta(days=1)).strftime("%Y-%m-%d")
+        # yfinance does not take start_date == end_date rquests, manually add 1 day if start_date == end_date
     else:
         print(f"Fetching data from {start_date} to {end_date}...")
 
     # Download new data
     try:
-        data = yf.download(ticker, start=start_date, progress=False)
+        data = yf.download(ticker, start=start_date, end=end_date, progress=False)
     except Exception as e:
         print(f"Download error: {e}")
         return
