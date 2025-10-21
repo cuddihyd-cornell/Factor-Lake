@@ -2,4 +2,7 @@ matplotlib>=3.9.0
 numpy>=1.23
 pandas>=2.2.2
 scipy>=0.8.0
+pytest>=7.4.0
+pytest-cov>=4.1.0
+supabase>=2.0.0
 

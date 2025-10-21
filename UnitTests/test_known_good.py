@@ -15,7 +15,7 @@ class TestFactorLakePortfolio(unittest.TestCase):
         self.start_year = 2002
         self.end_year = 2023
         self.initial_aum = 1
-        self.expected_final_value = 4.42
+        self.expected_final_value = 4.42 #error in supabase data sig digits
         self.expected_growth = 341.94
         self.factors = [Momentum6m()]
 

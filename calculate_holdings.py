@@ -11,9 +11,9 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
             fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
             mask = market.stocks[industry_col].str.lower().apply(
                 lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
-            market.stocks = market.stocks[mask]
+            market.stocks = market.stocks[mask].copy()
 
-    # ...existing code...
+    # Get eligible stocks for factor calculation
 
     factor_values = {
         ticker: factor.get(ticker, market)
