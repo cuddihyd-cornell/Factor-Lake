@@ -49,48 +49,59 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000
     
     if not use_supabase:
         # Fallback to Excel file (original implementation)
-            if excel_file_path:
-                file_path = excel_file_path
-            else:
-                # Default path (Google Colab style)
-                file_path = '/content/drive/My Drive/Cayuga Fund Factor Lake/FR2000 Annual Quant Data FOR RETURN SIMULATION.xlsx'
-        
+        if excel_file_path:
+            file_path = excel_file_path
+        else:
+            # Default path (Google Colab/Drive style)
+            # Try to mount Google Drive if in Colab environment
             try:
-                print(f"Loading Excel file from: {file_path}")
-                rdata = pd.read_excel(file_path, sheet_name='Data', header=2, skiprows=[3, 4])
+                from google.colab import drive
+                import os
+                if not os.path.exists('/content/drive'):
+                    print("Mounting Google Drive...")
+                    drive.mount('/content/drive')
+                file_path = '/content/drive/My Drive/Cayuga Fund Factor Lake/FR2000 Annual Quant Data FOR RETURN SIMULATION.xlsx'
+            except ImportError:
+                # Not in Colab, use local path or prompt for path
+                print("Not running in Google Colab. Please provide Excel file path.")
+                raise RuntimeError("Excel file path required when not using Supabase outside of Google Colab")
+        
+        try:
+            print(f"Loading Excel file from: {file_path}")
+            rdata = pd.read_excel(file_path, sheet_name='Data', header=2, skiprows=[3, 4])
             
-                # Strip whitespace from column names and remove duplicates
-                rdata.columns = rdata.columns.str.strip()
-                rdata = rdata.loc[:, ~rdata.columns.duplicated(keep='first')]
+            # Strip whitespace from column names and remove duplicates
+            rdata.columns = rdata.columns.str.strip()
+            rdata = rdata.loc[:, ~rdata.columns.duplicated(keep='first')]
 
-                # Add 'Ticker' column if missing
-                if 'Ticker' not in rdata.columns and 'Ticker-Region' in rdata.columns:
-                    rdata['Ticker'] = rdata['Ticker-Region'].str.split('-').str[0].str.strip()
+            # Add 'Ticker' column if missing
+            if 'Ticker' not in rdata.columns and 'Ticker-Region' in rdata.columns:
+                rdata['Ticker'] = rdata['Ticker-Region'].str.split('-').str[0].str.strip()
 
-                # Apply sector restriction logic
-                if restrict_fossil_fuels:
-                    industry_col = 'FactSet Industry'
-                    if industry_col in rdata.columns:
-                        rdata[industry_col] = rdata[industry_col].astype(str).str.lower()
-                        fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
-                        mask = rdata[industry_col].apply(lambda x: not any(kw in x for kw in fossil_keywords))
-                        rdata = rdata[mask]
-                    else:
-                        print("Warning: 'FactSet Industry' column not found. Fossil fuel filtering skipped.")
+            # Apply sector restriction logic
+            if restrict_fossil_fuels:
+                industry_col = 'FactSet Industry'
+                if industry_col in rdata.columns:
+                    rdata[industry_col] = rdata[industry_col].astype(str).str.lower()
+                    fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
+                    mask = rdata[industry_col].apply(lambda x: not any(kw in x for kw in fossil_keywords))
+                    rdata = rdata[mask]
+                else:
+                    print("Warning: 'FactSet Industry' column not found. Fossil fuel filtering skipped.")
 
-                # Ensure 'Year' column is present
-                if 'Year' not in rdata.columns and 'Date' in rdata.columns:
-                    rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
+            # Ensure 'Year' column is present
+            if 'Year' not in rdata.columns and 'Date' in rdata.columns:
+                rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
 
-                # Filter out rows with missing essential data (same as Supabase filtering)
-                rdata = _filter_essential_data(rdata)
+            # Filter out rows with missing essential data (same as Supabase filtering)
+            rdata = _filter_essential_data(rdata)
             
-                print(f"Successfully loaded {len(rdata)} records from Excel file after filtering")
-                return rdata
+            print(f"Successfully loaded {len(rdata)} records from Excel file after filtering")
+            return rdata
             
-            except Exception as e:
-                print(f"Error loading Excel file: {e}")
-                raise
+        except Exception as e:
+            print(f"Error loading Excel file: {e}")
+            raise
 
 
 def _standardize_column_names(df):
