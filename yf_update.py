@@ -55,28 +55,37 @@ def update_market_data(table_name: str, ticker: str):
     # Do not retrieve intra-market data before closing
     market_close_cutoff = now.replace(hour=18, minute=0, second=0, microsecond=0)
     
+
+    # If before 6 PM ET, today's data is not yet available → end_date = yesterday
     if now < market_close_cutoff:
-        end_date = now.strftime("%Y-%m-%d")  # fetch up to yesterday (inclusive)
+        end_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
     else:
-        end_date = (now + timedelta(days=1)).strftime("%Y-%m-%d")  # include today's data
-        
+        end_date = today  # after 6 PM, include today's data only
+
     # Handle data availability logic
     if pd.to_datetime(end_date) < pd.to_datetime(start_date):
         print(f"{today} data is not yet available. Data already up to date.")
         return
     elif start_date == end_date:
         print(f"Fetching today's data ({start_date})...")
-        end_date = (pd.to_datetime(end_date) + timedelta(days=1)).strftime("%Y-%m-%d")
-        # yfinance does not take start_date == end_date rquests, manually add 1 day if start_date == end_date
     else:
         print(f"Fetching data from {start_date} to {end_date}...")
+
+    # Because yfinance end is exclusive, always add +1 day
+    yf_end = (pd.to_datetime(end_date) + timedelta(days=1)).strftime("%Y-%m-%d")
+
+        
 
     # Download new data
     try:
         data = yf.download(ticker, start=start_date, end=end_date, progress=False)
     except Exception as e:
+        if "YFPricesMissingError" in str(e) or "no price data found" in str(e):
+            print(f"{end_date} data not available yet — market likely closed or data not published.")
+            return
         print(f"Download error: {e}")
         return
+
 
     if data.empty:
         print("No new data available. Table is up to date.")
