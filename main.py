@@ -38,12 +38,6 @@ def main():
             rdata = rdata[~rdata['FactSet Industry'].apply(is_fossil_fuel_industry)].copy()
         else:
             pass
-
-    ### Data preprocessing ###
-    # ...existing code...
-    
-    # Debug: show available columns
-    # ...existing code...
     
     rdata['Ticker'] = rdata['Ticker-Region'].dropna().apply(lambda x: x.split('-')[0].strip())
     rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
