@@ -35,22 +35,3 @@ def get_data_loading_verbosity():
         else:
             print("Invalid input. Please enter 'Yes' or 'No'.")
 
-
-def get_excel_file_path():
-    """
-    Ask the user for the Excel file path if not using Supabase.
-    
-    Returns:
-        str: Path to Excel file
-    """
-    print("\nPlease provide the path to your Excel file:")
-    print("Example: C:\\Users\\YourName\\Documents\\data.xlsx")
-    file_path = input("File path: ").strip()
-    
-    # Remove quotes if user wrapped the path in quotes
-    if file_path.startswith('"') and file_path.endswith('"'):
-        file_path = file_path[1:-1]
-    if file_path.startswith("'") and file_path.endswith("'"):
-        file_path = file_path[1:-1]
-    
-    return file_path

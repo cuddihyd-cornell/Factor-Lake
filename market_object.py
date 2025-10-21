@@ -4,7 +4,7 @@ from supabase_client import load_supabase_data
 import os
 
 ### CREATING FUNCTION TO LOAD DATA ###
-def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000 Annual Quant Data', excel_file_path=None, show_loading_progress=True):
+def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000 Annual Quant Data', show_loading_progress=True):
     """
     Load market data from either Supabase or Excel file (fallback).
     
@@ -12,7 +12,6 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000
         restrict_fossil_fuels (bool): Whether to exclude fossil fuel companies
         use_supabase (bool): If True, use Supabase; if False, use Excel fallback
         table_name (str): Name of Supabase table containing market data
-        excel_file_path (str): Path to Excel file (used when use_supabase=False)
         show_loading_progress (bool): Whether to show loading progress messages
     
     Returns:
@@ -48,23 +47,17 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000
             use_supabase = False
     
     if not use_supabase:
-        # Fallback to Excel file (original implementation)
-        if excel_file_path:
-            file_path = excel_file_path
-        else:
-            # Default path (Google Colab/Drive style)
-            # Try to mount Google Drive if in Colab environment
-            try:
-                from google.colab import drive
-                import os
-                if not os.path.exists('/content/drive'):
-                    print("Mounting Google Drive...")
-                    drive.mount('/content/drive')
-                file_path = '/content/drive/My Drive/Cayuga Fund Factor Lake/FR2000 Annual Quant Data FOR RETURN SIMULATION.xlsx'
-            except ImportError:
-                # Not in Colab, use local path or prompt for path
-                print("Not running in Google Colab. Please provide Excel file path.")
-                raise RuntimeError("Excel file path required when not using Supabase outside of Google Colab")
+        # Fallback to Excel file (Google Colab Drive only)
+        try:
+            from google.colab import drive  # type: ignore
+            if not os.path.exists('/content/drive'):
+                print("Mounting Google Drive...")
+                drive.mount('/content/drive')
+            file_path = '/content/drive/My Drive/Cayuga Fund Factor Lake/FR2000 Annual Quant Data FOR RETURN SIMULATION.xlsx'
+        except ImportError:
+            # Not in Colab
+            print("Excel fallback unavailable outside Google Colab. Please choose Supabase.")
+            raise RuntimeError("Excel fallback unavailable outside Google Colab. Please choose Supabase.")
         
         try:
             print(f"Loading Excel file from: {file_path}")
