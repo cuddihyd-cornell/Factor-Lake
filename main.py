@@ -3,6 +3,7 @@ from calculate_holdings import rebalance_portfolio
 from user_input import get_factors
 from verbosity_options import get_verbosity_level
 from fossil_fuel_restriction import get_fossil_fuel_restriction
+from supabase_input import get_supabase_preference, get_excel_file_path
 from Visualizations.portfolio_growth_plot import plot_portfolio_growth
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,8 +12,20 @@ def main():
     ### Ask about fossil fuel restriction first ###
     restrict_fossil_fuels = get_fossil_fuel_restriction()  # Prompt user (Yes/No)
 
-    # Always load market data from Supabase
-    rdata = load_data(restrict_fossil_fuels=restrict_fossil_fuels, use_supabase=True)
+    ### Ask about data source ###
+    use_supabase = get_supabase_preference()
+    
+    # Get Excel file path if not using Supabase
+    excel_path = None
+    if not use_supabase:
+        excel_path = get_excel_file_path()
+    
+    # Load market data
+    rdata = load_data(
+        restrict_fossil_fuels=restrict_fossil_fuels, 
+        use_supabase=use_supabase,
+        excel_file_path=excel_path
+    )
 
     ### Optional: Filter out fossil fuel-related industries ###
     if restrict_fossil_fuels:
