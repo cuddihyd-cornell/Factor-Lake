@@ -178,8 +178,15 @@ def _filter_essential_data(df):
     initial_count = len(df)
     
     # Remove rows where Ending Price is missing or invalid
+    price_col = None
     if 'Ending Price' in df.columns:
-        df = df[df['Ending Price'].notna() & (df['Ending Price'] > 0)]
+        price_col = 'Ending Price'
+    elif 'Ending_Price' in df.columns:
+        price_col = 'Ending_Price'
+    if price_col:
+        # Coerce to numeric in case values are strings
+        df[price_col] = pd.to_numeric(df[price_col], errors='coerce')
+        df = df[df[price_col].notna() & (df[price_col] > 0)]
     
     # Remove rows where Ticker is missing
     if 'Ticker' in df.columns:
