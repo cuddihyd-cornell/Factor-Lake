@@ -56,11 +56,10 @@ def update_market_data(table_name: str, ticker: str):
     market_close_cutoff = now.replace(hour=18, minute=0, second=0, microsecond=0)
     
 
-    # If before 6 PM ET, today's data is not yet available → end_date = yesterday
     if now < market_close_cutoff:
         end_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
     else:
-        end_date = today  # after 6 PM, include today's data only
+        end_date = today
 
     # Handle data availability logic
     if pd.to_datetime(end_date) < pd.to_datetime(start_date):
@@ -71,7 +70,7 @@ def update_market_data(table_name: str, ticker: str):
     else:
         print(f"Fetching data from {start_date} to {end_date}...")
 
-    # Because yfinance end is exclusive, always add +1 day
+    # Adjust for Yahoo Finance’s exclusive end date
     yf_end = (pd.to_datetime(end_date) + timedelta(days=1)).strftime("%Y-%m-%d")
 
         
