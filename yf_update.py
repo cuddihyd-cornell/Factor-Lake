@@ -56,9 +56,9 @@ def update_market_data(table_name: str, ticker: str):
     market_close_cutoff = now.replace(hour=18, minute=0, second=0, microsecond=0)
     
     if now < market_close_cutoff:
-        end_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
+        end_date = now.strftime("%Y-%m-%d")  # fetch up to yesterday (inclusive)
     else:
-        end_date = today
+        end_date = (now + timedelta(days=1)).strftime("%Y-%m-%d")  # include today's data
         
     # Handle data availability logic
     if pd.to_datetime(end_date) < pd.to_datetime(start_date):
