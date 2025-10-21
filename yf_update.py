@@ -73,11 +73,13 @@ def update_market_data(table_name: str, ticker: str):
     # Adjust for Yahoo Finance’s exclusive end date
     yf_end = (pd.to_datetime(end_date) + timedelta(days=1)).strftime("%Y-%m-%d")
 
-        
+    if pd.to_datetime(start_date) > pd.to_datetime(end_date):
+        print(f"{today} data not yet available. Table already up to date.")
+        return    
 
     # Download new data
     try:
-        data = yf.download(ticker, start=start_date, end=end_date, progress=False)
+        data = yf.download(ticker, start=start_date, end=end_date, progress=False, auto_adjust)
     except Exception as e:
         if "YFPricesMissingError" in str(e) or "no price data found" in str(e):
             print(f"{end_date} data not available yet — market likely closed or data not published.")
