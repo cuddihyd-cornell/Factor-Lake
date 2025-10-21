@@ -86,10 +86,8 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000
             if 'Year' not in rdata.columns and 'Date' in rdata.columns:
                 rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
 
-            # Filter out rows with missing essential data (same as Supabase filtering)
-            rdata = _filter_essential_data(rdata)
-            
-            print(f"Successfully loaded {len(rdata)} records from Excel file after filtering")
+            # Note: For Excel fallback, mirror 'main' behavior (no extra filtering)
+            print(f"Successfully loaded {len(rdata)} records from Excel file")
             return rdata
             
         except Exception as e:
@@ -255,12 +253,13 @@ class MarketObject():
             if col in data.columns:
                 data[col] = pd.to_numeric(data[col], errors='coerce')
 
-        # Prefer 'Ticker-Region' as unique index; fallback to 'Ticker'
-        index_col = 'Ticker-Region' if 'Ticker-Region' in data.columns else 'Ticker'
-        try:
-            data.set_index(index_col, inplace=True)
-        except Exception:
-            pass
+        # Prefer 'Ticker' index for compatibility with 'main'; fallback to 'Ticker-Region'
+        index_col = 'Ticker' if 'Ticker' in data.columns else ('Ticker-Region' if 'Ticker-Region' in data.columns else None)
+        if index_col:
+            try:
+                data.set_index(index_col, inplace=True)
+            except Exception:
+                pass
 
         self.stocks = data
         self.t = t
