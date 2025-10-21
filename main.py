@@ -27,31 +27,8 @@ def main():
         excel_file_path=excel_path
     )
 
-    ### Optional: Filter out fossil fuel-related industries ###
-    if restrict_fossil_fuels:
-        fossil_fuel_keywords = [
-            "coal",
-            "oil",
-            "gas",
-            "petroleum",
-            "fossil",
-            "fuel",
-            "mining",
-            "drilling",
-            "pipeline",
-            "refining"
-        ]
-        def is_fossil_fuel_industry(industry_name):
-            if not isinstance(industry_name, str):
-                return False
-            normalized = industry_name.lower().replace("&", "and").replace("/", " ")
-            return any(keyword in normalized for keyword in fossil_fuel_keywords)
-        if 'FactSet Industry' in rdata.columns:
-            original_len = len(rdata)
-            rdata = rdata[~rdata['FactSet Industry'].apply(is_fossil_fuel_industry)].copy()
-        else:
-            pass
-    
+    ### Data preprocessing ###
+    # Note: Fossil fuel filtering is applied later in calculate_holdings() for each year
     rdata['Ticker'] = rdata['Ticker-Region'].dropna().apply(lambda x: x.split('-')[0].strip())
     rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
 
