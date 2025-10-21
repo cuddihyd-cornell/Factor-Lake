@@ -53,11 +53,13 @@ def update_market_data(table_name: str, ticker: str):
     today = now.strftime("%Y-%m-%d")
     
     # Do not retrieve intra-market data before closing
-    if now.hour < 18:
-        end_date = (datetime.today() - timedelta(days=1)).strftime("%Y-%m-%d")
+    market_close_cutoff = now.replace(hour=18, minute=0, second=0, microsecond=0)
+    
+    if now < market_close_cutoff:
+        end_date = (now - timedelta(days=1)).strftime("%Y-%m-%d")
     else:
         end_date = today
-
+        
     # Handle data availability logic
     if pd.to_datetime(end_date) < pd.to_datetime(start_date):
         print(f"{today} data is not yet available. Data already up to date.")
