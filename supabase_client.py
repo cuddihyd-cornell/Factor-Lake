@@ -2,11 +2,15 @@ import os
 import pandas as pd
 from supabase import create_client, Client
 
-def load_supabase_data(table_name='FR2000 Annual Quant Data'):
+def load_supabase_data(table_name='FR2000 Annual Quant Data', show_progress=True):
     """
     Loads data from a Supabase table and returns it as a pandas DataFrame.
     Credentials are read from environment variables or Colab userdata.
     Uses pagination to load all records.
+    
+    Args:
+        table_name (str): Name of the Supabase table to load
+        show_progress (bool): Whether to print loading progress messages
     """
     supabase_url = os.environ.get('SUPABASE_URL')
     supabase_key = os.environ.get('SUPABASE_KEY')
@@ -27,7 +31,8 @@ def load_supabase_data(table_name='FR2000 Annual Quant Data'):
     offset = 0
     all_rows = []
     
-    print(f"Loading data from Supabase table '{table_name}'...")
+    if show_progress:
+        print(f"Loading data from Supabase table '{table_name}'...")
     
     while True:
         # Fetch a page of data
@@ -39,7 +44,8 @@ def load_supabase_data(table_name='FR2000 Annual Quant Data'):
             break
         
         all_rows.extend(batch)
-        print(f"Loaded {len(all_rows)} records so far...")
+        if show_progress:
+            print(f"Loaded {len(all_rows)} records so far...")
         
         # If we got fewer records than page_size, we're done
         if len(batch) < page_size:
@@ -47,7 +53,8 @@ def load_supabase_data(table_name='FR2000 Annual Quant Data'):
         
         offset += page_size
     
-    print(f"Total records loaded: {len(all_rows)}")
+    if show_progress:
+        print(f"Total records loaded: {len(all_rows)}")
     
     return pd.DataFrame(all_rows)
     

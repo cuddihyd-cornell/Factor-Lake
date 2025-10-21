@@ -4,7 +4,7 @@ from supabase_client import load_supabase_data
 import os
 
 ### CREATING FUNCTION TO LOAD DATA ###
-def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000 Annual Quant Data', excel_file_path=None):
+def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000 Annual Quant Data', excel_file_path=None, show_loading_progress=True):
     """
     Load market data from either Supabase or Excel file (fallback).
     
@@ -13,6 +13,7 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000
         use_supabase (bool): If True, use Supabase; if False, use Excel fallback
         table_name (str): Name of Supabase table containing market data
         excel_file_path (str): Path to Excel file (used when use_supabase=False)
+        show_loading_progress (bool): Whether to show loading progress messages
     
     Returns:
         pandas.DataFrame: Market data
@@ -21,7 +22,7 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000
     if use_supabase:
         try:
             # Load data from Supabase
-            rdata = load_supabase_data(table_name)
+            rdata = load_supabase_data(table_name, show_progress=show_loading_progress)
             
             if rdata.empty:
                 print("Warning: No data loaded from Supabase. Check your table and connection.")
