@@ -9,8 +9,16 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
         industry_col = 'FactSet Industry'
         if industry_col in market.stocks.columns:
             fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
-            mask = market.stocks[industry_col].str.lower().apply(
+            series = market.stocks[industry_col].astype(str).str.lower()
+            mask = series.apply(
                 lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
+            # Report which tickers are being removed in this step
+            try:
+                removed_tickers = list(market.stocks.loc[~mask].index)
+                if removed_tickers:
+                    print(f"Fossil filter (holdings) removed {len(removed_tickers)} tickers: {', '.join(removed_tickers[:25])}{' ...' if len(removed_tickers) > 25 else ''}")
+            except Exception:
+                pass
             market.stocks = market.stocks[mask].copy()
 
     # Get eligible stocks for factor calculation

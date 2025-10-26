@@ -35,6 +35,25 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
             # Standardize column names to match existing code expectations
             rdata = _standardize_column_names(rdata)
 
+            # Apply sector restriction logic (post-standardization)
+            if restrict_fossil_fuels:
+                industry_col = 'FactSet Industry'
+                if industry_col in rdata.columns:
+                    before = rdata.copy()
+                    rdata[industry_col] = rdata[industry_col].astype(str).str.lower()
+                    fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
+                    mask = rdata[industry_col].apply(lambda x: not any(kw in x for kw in fossil_keywords))
+                    rdata = rdata[mask]
+                    # Report removals (tickers)
+                    if 'Ticker' in before.columns and 'Ticker' in rdata.columns:
+                        removed = sorted(set(before['Ticker']) - set(rdata['Ticker']))
+                        if removed:
+                            print(f"Fossil filter removed {len(removed)} tickers (Supabase): {', '.join(removed[:25])}{' ...' if len(removed) > 25 else ''}")
+                        else:
+                            print("Fossil filter removed 0 tickers (Supabase)")
+                else:
+                    print("Warning: 'FactSet Industry' column not found. Fossil fuel filtering skipped.")
+
             print(f"Successfully loaded {len(rdata)} records from Supabase")
             # Quick sanity check: distribution by Year after standardization
             if 'Year' in rdata.columns:
@@ -80,10 +99,18 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
             if restrict_fossil_fuels:
                 industry_col = 'FactSet Industry'
                 if industry_col in rdata.columns:
+                    before = rdata.copy()
                     rdata[industry_col] = rdata[industry_col].astype(str).str.lower()
                     fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
                     mask = rdata[industry_col].apply(lambda x: not any(kw in x for kw in fossil_keywords))
                     rdata = rdata[mask]
+                    # Report removals (tickers)
+                    if 'Ticker' in before.columns and 'Ticker' in rdata.columns:
+                        removed = sorted(set(before['Ticker']) - set(rdata['Ticker']))
+                        if removed:
+                            print(f"Fossil filter removed {len(removed)} tickers (Excel): {', '.join(removed[:25])}{' ...' if len(removed) > 25 else ''}")
+                        else:
+                            print("Fossil filter removed 0 tickers (Excel)")
                 else:
                     print("Warning: 'FactSet Industry' column not found. Fossil fuel filtering skipped.")
 
@@ -246,7 +273,7 @@ class MarketObject():
             "Next-Year's Return %", "Next-Year's Active Return %"
         ]
         # Keep Ticker-Region so we can index uniquely when present
-        keep_cols = ['Ticker-Region', 'Ticker', 'Ending Price', 'Year', '6-Mo Momentum %'] + available_factors
+        keep_cols = ['Ticker-Region', 'Ticker', 'Ending Price', 'Year', '6-Mo Momentum %', 'FactSet Industry'] + available_factors
 
         # Filter and clean data
         data = data[[col for col in keep_cols if col in data.columns]].copy()
