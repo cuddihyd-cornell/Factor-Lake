@@ -3,8 +3,8 @@ import numpy as np
 from supabase_client import load_supabase_data
 import os
 
-### CREATING FUNCTION TO LOAD DATA ###
-def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000 Annual Quant Data', show_loading_progress=True):
+### CREATING FUNCTION TO LOAD DATA ### Tables: FR2000 Annual Quant Data Full Precision Test
+def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full Precision Test', show_loading_progress=True):
     """
     Load market data from either Supabase or Excel file (fallback).
     
@@ -20,8 +20,13 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='FR2000
     
     if use_supabase:
         try:
+            # Resolve which Supabase table to use (param > env var > sensible default)
+            effective_table = table_name or os.environ.get('SUPABASE_TABLE') or 'Full Precision Test'
+
             # Load data from Supabase
-            rdata = load_supabase_data(table_name, show_progress=show_loading_progress)
+            if show_loading_progress:
+                print(f"Using Supabase table: '{effective_table}'")
+            rdata = load_supabase_data(effective_table, show_progress=show_loading_progress)
             
             if rdata.empty:
                 print("Warning: No data loaded from Supabase. Check your table and connection.")
