@@ -25,7 +25,7 @@ def get_sector_selection():
         print(f"{i}. {s}")
 
     while True:
-        resp = input("\nHow many sectors to include? (ALL, 1,2,3,4,5): ").strip()
+        resp = input("\nHow many sectors to include? (ALL, 1,2,3,4): ").strip()
         if resp.lower() == "all":
             print("Selecting ALL sectors.")
             return SECTORS.copy()
