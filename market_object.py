@@ -120,15 +120,14 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
             else:
                 rdata = pd.read_excel(data_path, sheet_name=excel_sheet, header=2, skiprows=[3, 4])
 
-            # Strip whitespace from column names and remove duplicates
+            # Normalize column names and remove duplicate columns
             rdata.columns = rdata.columns.str.strip()
             rdata = rdata.loc[:, ~rdata.columns.duplicated(keep='first')]
 
-            # Add 'Ticker' column if missing
-            if 'Ticker' not in rdata.columns and 'Ticker-Region' in rdata.columns:
-                rdata['Ticker'] = rdata['Ticker-Region'].str.split('-').str[0].str.strip()
+            # Standardize to the same column names we expect from Supabase
+            rdata = _standardize_column_names(rdata)
 
-            # Apply sector restriction logic
+            # Apply sector restriction logic (post-standardization)
             if restrict_fossil_fuels:
                 industry_col = 'FactSet Industry'
                 if industry_col in rdata.columns:
@@ -147,11 +146,31 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
                 else:
                     print("Warning: 'FactSet Industry' column not found. Fossil fuel filtering skipped.")
 
-            # Ensure 'Year' column is present
-            if 'Year' not in rdata.columns and 'Date' in rdata.columns:
-                rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
+            # Remove duplicate rows and rows with missing essential data (prices/tickers/dates)
+            try:
+                before_total = len(rdata)
+                # Drop exact duplicate rows
+                rdata = rdata.drop_duplicates()
+                dup_removed = before_total - len(rdata)
+
+                # Filter out rows missing essential data
+                rdata_before_filter = rdata.copy()
+                rdata = _filter_essential_data(rdata)
+                nulls_removed = len(rdata_before_filter) - len(rdata)
+
+                if dup_removed > 0 or nulls_removed > 0:
+                    print(f"File load: removed {dup_removed} duplicate rows and {nulls_removed} rows with missing essential data (out of {before_total} rows).")
+            except Exception:
+                pass
 
             print(f"Successfully loaded {len(rdata)} records from file")
+            # Quick sanity check: distribution by Year after standardization
+            if 'Year' in rdata.columns:
+                try:
+                    year_counts = rdata['Year'].value_counts().sort_index()
+                    print("Rows per Year (File):", ", ".join([f"{int(y)}: {int(c)}" for y, c in year_counts.items()]))
+                except Exception:
+                    pass
             return rdata
 
         except Exception as e:
