@@ -54,6 +54,24 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
                 else:
                     print("Warning: 'FactSet Industry' column not found. Fossil fuel filtering skipped.")
 
+            # Remove duplicate rows and rows with missing essential data (prices/tickers/dates)
+            try:
+                before_total = len(rdata)
+                # Drop exact duplicate rows
+                rdata = rdata.drop_duplicates()
+                dup_removed = before_total - len(rdata)
+
+                # Filter out rows missing essential data (uses same logic as for Excel fallback)
+                rdata_before_filter = rdata.copy()
+                rdata = _filter_essential_data(rdata)
+                nulls_removed = len(rdata_before_filter) - len(rdata)
+
+                if dup_removed > 0 or nulls_removed > 0:
+                    print(f"Supabase load: removed {dup_removed} duplicate rows and {nulls_removed} rows with missing essential data (out of {before_total} rows).")
+            except Exception:
+                # Non-fatal: continue without failing the load
+                pass
+
             print(f"Successfully loaded {len(rdata)} records from Supabase")
             # Quick sanity check: distribution by Year after standardization
             if 'Year' in rdata.columns:
