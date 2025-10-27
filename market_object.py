@@ -98,8 +98,8 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
 
         # If no explicit data_path provided, try the historical default for Colab
         if data_path is None and in_colab:
-            data_path = '/content/drive/My Drive/Cayuga Fund Factor Lake/FR2000 Annual Quant Data FOR RETURN SIMULATION.xlsx'
-
+            #data_path = '/content/drive/My Drive/Cayuga Fund Factor Lake/FR2000 Annual Quant Data FOR RETURN SIMULATION.xlsx'
+            data_path = '/content/drive/MyDrive/Cayuga Fund Factor Lake/Full Precision Test_rows.csv'
         if data_path is None:
             print("Excel/CSV fallback unavailable: provide data_path when not using Supabase or run in Colab.")
             raise RuntimeError("Excel/CSV fallback unavailable: provide data_path when not using Supabase or run in Colab.")
