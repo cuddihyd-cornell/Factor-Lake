@@ -3,10 +3,18 @@ from market_object import load_data
 from calculate_holdings import rebalance_portfolio
 import unittest
 import pandas as pd
+import pytest
+import os
 
+@pytest.mark.integration
+@pytest.mark.slow
+@pytest.mark.skipif(
+    not os.getenv('SUPABASE_URL') or not os.getenv('SUPABASE_KEY'),
+    reason="Requires Supabase credentials (SUPABASE_URL and SUPABASE_KEY)"
+)
 class TestFactorLakePortfolio(unittest.TestCase):
     def setUp(self):
-        self.data = load_data()
+        self.data = load_data(use_supabase=True)
         
         # Ensure 'Year' column exists for consistency
         if 'Year' not in self.data.columns:

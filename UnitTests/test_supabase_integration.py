@@ -1,10 +1,25 @@
 """
 Test suite for Supabase integration
 Tests data loading, pagination, and database connectivity
+
+NOTE: All tests in this module require Supabase credentials.
+Mark as @pytest.mark.integration and @pytest.mark.slow
+Run with: pytest -m integration (when credentials are available)
 """
 import pytest
 import pandas as pd
+import os
 from supabase_client import load_supabase_data
+
+# Skip entire module if no credentials
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.slow,
+    pytest.mark.skipif(
+        not os.getenv('SUPABASE_URL') or not os.getenv('SUPABASE_KEY'),
+        reason="Requires Supabase credentials (SUPABASE_URL and SUPABASE_KEY)"
+    )
+]
 
 
 class TestSupabaseConnection:
