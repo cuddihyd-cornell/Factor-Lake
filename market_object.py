@@ -4,7 +4,7 @@ from supabase_client import load_supabase_data
 import os
 
 ### CREATING FUNCTION TO LOAD DATA ### Tables: FR2000 Annual Quant Data Full Precision Test
-def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full Precision Test', show_loading_progress=True):
+def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full Precision Test', show_loading_progress=True, data_path=None, excel_sheet='Data'):
     """
     Load market data from either Supabase or Excel file (fallback).
     
@@ -89,22 +89,37 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
             use_supabase = False
     
     if not use_supabase:
-        # Fallback to Excel file (Google Colab Drive only)
+        # Fallback to local file (Excel or CSV). Accepts a data_path (CSV or Excel).
         try:
             from google.colab import drive  # type: ignore
-            if not os.path.exists('/content/drive'):
+            in_colab = True
+        except Exception:
+            in_colab = False
+
+        # If no explicit data_path provided, try the historical default for Colab
+        if data_path is None and in_colab:
+            data_path = '/content/drive/My Drive/Cayuga Fund Factor Lake/FR2000 Annual Quant Data FOR RETURN SIMULATION.xlsx'
+
+        if data_path is None:
+            print("Excel/CSV fallback unavailable: provide data_path when not using Supabase or run in Colab.")
+            raise RuntimeError("Excel/CSV fallback unavailable: provide data_path when not using Supabase or run in Colab.")
+
+        # Mount Drive in Colab if necessary
+        if in_colab and not os.path.exists('/content/drive'):
+            try:
                 print("Mounting Google Drive...")
                 drive.mount('/content/drive')
-            file_path = '/content/drive/My Drive/Cayuga Fund Factor Lake/FR2000 Annual Quant Data FOR RETURN SIMULATION.xlsx'
-        except ImportError:
-            # Not in Colab
-            print("Excel fallback unavailable outside Google Colab. Please choose Supabase.")
-            raise RuntimeError("Excel fallback unavailable outside Google Colab. Please choose Supabase.")
-        
+            except Exception:
+                pass
+
         try:
-            print(f"Loading Excel file from: {file_path}")
-            rdata = pd.read_excel(file_path, sheet_name='Data', header=2, skiprows=[3, 4])
-            
+            print(f"Loading data file from: {data_path}")
+            lp = str(data_path).lower()
+            if lp.endswith('.csv'):
+                rdata = pd.read_csv(data_path)
+            else:
+                rdata = pd.read_excel(data_path, sheet_name=excel_sheet, header=2, skiprows=[3, 4])
+
             # Strip whitespace from column names and remove duplicates
             rdata.columns = rdata.columns.str.strip()
             rdata = rdata.loc[:, ~rdata.columns.duplicated(keep='first')]
@@ -126,9 +141,9 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
                     if 'Ticker' in before.columns and 'Ticker' in rdata.columns:
                         removed = sorted(set(before['Ticker']) - set(rdata['Ticker']))
                         if removed:
-                            print(f"Fossil filter removed {len(removed)} tickers (Excel): {', '.join(removed[:25])}{' ...' if len(removed) > 25 else ''}")
+                            print(f"Fossil filter removed {len(removed)} tickers (Excel/CSV): {', '.join(removed[:25])}{' ...' if len(removed) > 25 else ''}")
                         else:
-                            print("Fossil filter removed 0 tickers (Excel)")
+                            print("Fossil filter removed 0 tickers (Excel/CSV)")
                 else:
                     print("Warning: 'FactSet Industry' column not found. Fossil fuel filtering skipped.")
 
@@ -136,12 +151,11 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
             if 'Year' not in rdata.columns and 'Date' in rdata.columns:
                 rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
 
-            # Note: For Excel fallback, mirror 'main' behavior (no extra filtering)
-            print(f"Successfully loaded {len(rdata)} records from Excel file")
+            print(f"Successfully loaded {len(rdata)} records from file")
             return rdata
-            
+
         except Exception as e:
-            print(f"Error loading Excel file: {e}")
+            print(f"Error loading data file: {e}")
             raise
 
 
