@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from supabase import create_client, Client
 
-def load_supabase_data(table_name='FR2000 Annual Quant Data', show_progress=True):
+def load_supabase_data(table_name='Full Precision Test', show_progress=True, sectors=None):
     """
     Loads data from a Supabase table and returns it as a pandas DataFrame.
     Credentials are read from environment variables or Colab userdata.
@@ -35,8 +35,19 @@ def load_supabase_data(table_name='FR2000 Annual Quant Data', show_progress=True
         print(f"Loading data from Supabase table '{table_name}'...")
     
     while True:
+        # Build base query
+        base_query = supabase.table(table_name).select('*')
+        # Apply server-side sector filter if provided. Uses the exact DB column name.
+        # Column is renamed later to "Scott's Sector (5)" by the loader.
+        if sectors:
+            try:
+                base_query = base_query.in_('Scotts_Sector_5', sectors)
+            except Exception:
+                # If server-side filter isn't supported, we'll filter client-side later
+                pass
+
         # Fetch a page of data
-        response = supabase.table(table_name).select('*').range(offset, offset + page_size - 1).execute()
+        response = base_query.range(offset, offset + page_size - 1).execute()
         
         batch = response.data if hasattr(response, 'data') else response
         

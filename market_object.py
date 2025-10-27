@@ -4,7 +4,7 @@ from supabase_client import load_supabase_data
 import os
 
 ### CREATING FUNCTION TO LOAD DATA ### Tables: FR2000 Annual Quant Data Full Precision Test
-def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full Precision Test', show_loading_progress=True, data_path=None, excel_sheet='Data'):
+def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full Precision Test', show_loading_progress=True, data_path=None, excel_sheet='Data', sectors=None):
     """
     Load market data from either Supabase or Excel file (fallback).
     
@@ -26,7 +26,7 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
             # Load data from Supabase
             if show_loading_progress:
                 print(f"Using Supabase table: '{effective_table}'")
-            rdata = load_supabase_data(effective_table, show_progress=show_loading_progress)
+            rdata = load_supabase_data(effective_table, show_progress=show_loading_progress, sectors=sectors)
             
             if rdata.empty:
                 print("Warning: No data loaded from Supabase. Check your table and connection.")
@@ -53,6 +53,10 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
                             print("Fossil filter removed 0 tickers (Supabase)")
                 else:
                     print("Warning: 'FactSet Industry' column not found. Fossil fuel filtering skipped.")
+
+            # If sectors are provided, apply client-side filter as safety-net (in case server-side failed)
+            if sectors:
+                rdata = _apply_sector_filter(rdata, sectors, context_label="Supabase")
 
             # Remove duplicate rows and rows with missing essential data (prices/tickers/dates)
             try:
@@ -145,6 +149,10 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
                             print("Fossil filter removed 0 tickers (Excel/CSV)")
                 else:
                     print("Warning: 'FactSet Industry' column not found. Fossil fuel filtering skipped.")
+
+            # If sectors are provided, apply client-side filter
+            if sectors:
+                rdata = _apply_sector_filter(rdata, sectors, context_label="File")
 
             # Remove duplicate rows and rows with missing essential data (prices/tickers/dates)
             try:
@@ -248,6 +256,31 @@ def _standardize_column_names(df):
     
     return df
 
+
+
+def _apply_sector_filter(df: pd.DataFrame, sectors, context_label: str = "") -> pd.DataFrame:
+    """
+    Filter a DataFrame to only include selected sectors.
+
+    Args:
+        df: DataFrame containing at least the column "Scott's Sector (5)" after standardization
+        sectors: list of sector names to include
+        context_label: short label for logging context (e.g., "Supabase" or "File")
+
+    Returns:
+        Filtered DataFrame
+    """
+    if not sectors:
+        return df
+    col = "Scott's Sector (5)"
+    if col not in df.columns:
+        print(f"Warning: '{col}' column not found. Sector filtering skipped ({context_label}).")
+        return df
+    before = len(df)
+    filtered = df[df[col].isin(sectors)].copy()
+    removed = before - len(filtered)
+    print(f"Sector filter kept {len(filtered)} rows and removed {removed} ({context_label}).")
+    return filtered
 
 def _filter_essential_data(df):
     """
