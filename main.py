@@ -39,8 +39,7 @@ def main():
         'ROE using 9/30 Data', 'ROA using 9/30 Data', '12-Mo Momentum %',
         '6-Mo Momentum %', '1-Mo Momentum %', 'Price to Book Using 9/30 Data',
         'Next FY Earns/P', '1-Yr Price Vol %', 'Accruals/Assets', 'ROA %',
-        '1-Yr Asset Growth %', '1-Yr CapEX Growth %', 'Book/Price',
-        "Next-Year's Return %", "Next-Year's Active Return %"
+        '1-Yr Asset Growth %', '1-Yr CapEX Growth %', 'Book/Price'
     ]
     
     # Only select columns that actually exist
