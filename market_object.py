@@ -117,20 +117,6 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
             lp = str(data_path).lower()
             if lp.endswith('.csv'):
                 rdata = pd.read_csv(data_path)
-                # Additional cleaning for CSV: remove commas from numeric-like columns to handle formatting like "1,234.56"
-                for col in rdata.columns:
-                    if rdata[col].dtype == 'object':  # Likely strings
-                        # Check if column looks numeric (contains digits, commas, periods)
-                        sample = rdata[col].dropna().head(10).astype(str)
-                        if sample.str.match(r'^[\d,.\-\+]+$').any():  # Contains digits, commas, periods, etc.
-                            # Remove commas and try to convert to numeric temporarily to check
-                            cleaned = sample.str.replace(',', '', regex=False)
-                            try:
-                                pd.to_numeric(cleaned, errors='coerce')
-                                # If successful, apply to the column
-                                rdata[col] = rdata[col].astype(str).str.replace(',', '', regex=False)
-                            except:
-                                pass  # Not numeric, leave as is
             else:
                 rdata = pd.read_excel(data_path, sheet_name=excel_sheet, header=2, skiprows=[3, 4])
 
