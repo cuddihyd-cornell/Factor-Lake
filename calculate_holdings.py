@@ -2,6 +2,8 @@ from market_object import MarketObject
 from portfolio import Portfolio
 import numpy as np
 import pandas as pd
+from factors_doc import FACTOR_DOCS
+from factor_utils import normalize_series
 
 def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     # Apply sector restrictions if enabled
@@ -22,12 +24,25 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
             market.stocks = market.stocks[mask].copy()
 
     # Get eligible stocks for factor calculation
+    # Prefer vectorized series from market.stocks when available so we can normalize
+    factor_col = getattr(factor, 'column_name', str(factor))
+    factor_values = {}
 
-    factor_values = {
-        ticker: factor.get(ticker, market)
-        for ticker in market.stocks.index
-        if isinstance(factor.get(ticker, market), (int, float))
-    }
+    if factor_col in market.stocks.columns:
+        raw_series = pd.to_numeric(market.stocks[factor_col], errors='coerce')
+        # Determine direction from FACTOR_DOCS if available
+        meta = FACTOR_DOCS.get(factor_col, {})
+        higher_is_better = meta.get('higher_is_better', True)
+        # Normalize series (winsorize + zscore) and invert if needed so higher == better
+        normed = normalize_series(raw_series, higher_is_better=higher_is_better)
+        factor_values = normed.dropna().to_dict()
+    else:
+        # Fallback to original per-ticker get() when column not present
+        factor_values = {
+            ticker: factor.get(ticker, market)
+            for ticker in market.stocks.index
+            if isinstance(factor.get(ticker, market), (int, float))
+        }
     
     # ...existing code...
     
