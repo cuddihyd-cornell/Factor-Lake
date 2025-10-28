@@ -12,8 +12,8 @@ UnitTests/
 ├── test_portfolio.py                # Portfolio management and valuation
 ├── test_calculate_holdings.py       # Portfolio construction and rebalancing
 ├── test_supabase_integration.py     # Database integration tests
-├── test_known_good.py              # Regression tests (existing)
-└── test_multiple_factors.py        # Multi-factor tests (existing)
+├── test_known_good.py               # Regression tests (existing)
+└── test_multiple_factors.py         # Multi-factor tests (existing)
 ```
 
 ## Quick Start

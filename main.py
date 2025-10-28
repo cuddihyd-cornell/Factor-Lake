@@ -4,7 +4,7 @@ from user_input import get_factors
 from verbosity_options import get_verbosity_level
 from fossil_fuel_restriction import get_fossil_fuel_restriction
 from supabase_input import get_supabase_preference, get_data_loading_verbosity
-from sector_selection import get_sector_selection
+from factor_lake.utils.sector_selection import get_sector_selection
 from Visualizations.portfolio_growth_plot import plot_portfolio_growth
 import pandas as pd
 import matplotlib.pyplot as plt
