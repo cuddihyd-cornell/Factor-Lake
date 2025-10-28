@@ -2,6 +2,8 @@ from market_object import MarketObject
 from portfolio import Portfolio
 import numpy as np
 import pandas as pd
+from factors_doc import FACTOR_DOCS
+from factor_utils import normalize_series
 
 def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     # Apply sector restrictions if enabled
@@ -9,17 +11,45 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
         industry_col = 'FactSet Industry'
         if industry_col in market.stocks.columns:
             fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
-            mask = market.stocks[industry_col].str.lower().apply(lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
-            market.stocks = market.stocks[mask]
+            series = market.stocks[industry_col].astype(str).str.lower()
+            mask = series.apply(
+                lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
+            # Report which tickers are being removed in this step
+            try:
+                removed_tickers = list(market.stocks.loc[~mask].index)
+                if removed_tickers:
+                    print(f"Fossil filter (holdings) removed {len(removed_tickers)} tickers: {', '.join(removed_tickers[:25])}{' ...' if len(removed_tickers) > 25 else ''}")
+            except Exception:
+                pass
+            market.stocks = market.stocks[mask].copy()x
 
-    # Access tickers directly from the index instead of the 'Ticker' column
-    factor_values = {
-        ticker: factor.get(ticker, market)
-        for ticker in market.stocks.index
-        if isinstance(factor.get(ticker, market), (int, float))  # Ensure scalar values
-    }
+    # Get eligible stocks for factor calculation
+    # Prefer vectorized series from market.stocks when available so we can normalize
+    factor_col = getattr(factor, 'column_name', str(factor))
+    factor_values = {}
 
-    # Sort securities by factor values in descending order
+    if factor_col in market.stocks.columns:
+        raw_series = pd.to_numeric(market.stocks[factor_col], errors='coerce')
+        # Determine direction from FACTOR_DOCS if available
+        meta = FACTOR_DOCS.get(factor_col, {})
+        higher_is_better = meta.get('higher_is_better', True)
+        # Normalize series (winsorize + zscore) and invert if needed so higher == better
+        normed = normalize_series(raw_series, higher_is_better=higher_is_better)
+        factor_values = normed.dropna().to_dict()
+    else:
+        # Fallback to original per-ticker get() when column not present
+        factor_values = {
+            ticker: factor.get(ticker, market)
+            for ticker in market.stocks.index
+            if isinstance(factor.get(ticker, market), (int, float))
+        }
+    
+    # ...existing code...
+    
+    if len(factor_values) == 0:
+        # Return empty portfolio instead of crashing
+        return Portfolio(name=f"Portfolio_{market.t}")
+    
     sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
 
     # Select the top 10% of securities
@@ -113,6 +143,21 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         overall_growth = (aum - initial_aum) / initial_aum if initial_aum else 0
         print(f"Final Portfolio Value after {end_year}: ${aum:.2f}")
         print(f"Overall Growth from {start_year} to {end_year}: {overall_growth * 100:.2f}%")
+        print(f"\n==== Performance Metrics ====")
+
+#backtest stats 
+    portfolio_returns_np = np.array(portfolio_returns)
+    benchmark_returns_np = np.array(benchmark_returns) / 100
+    active_returns = portfolio_returns_np - benchmark_returns_np
+
+    annualized_return = (np.prod(1 + portfolio_returns_np))**(1 / len(portfolio_returns_np)) - 1
+    annualized_volatility = np.std(portfolio_returns_np, ddof=1) * np.sqrt(1)  # yearly data
+    active_volatility = np.std(active_returns, ddof=1)
+
+    print(f"Annualized Return (Portfolio): {annualized_return:.2%}")
+    print(f"Annualized Volatility (Portfolio): {annualized_volatility:.2%}")
+    print(f"Active Volatility (Portfolio vs Benchmark): {active_volatility:.2%}")
+
   
     # Calculate Information Ratio
     information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
@@ -125,7 +170,7 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         'benchmark_returns': benchmark_returns,
         'years': years,
         'portfolio_values': portfolio_values
-     }
+    }
     
 def get_benchmark_return(year):
     """

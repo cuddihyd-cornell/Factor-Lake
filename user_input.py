@@ -66,10 +66,6 @@ def get_factors(available_factors):
                 factors.append((factor_function.OneYrCapEXGrowth(), name))
             case "Book/Price":
                 factors.append((factor_function.BookPrice(), name))
-            case "Next-Year's Return %":
-                factors.append((factor_function.NextYrReturn(), name))
-            case "Next-Year's Active Return %":
-                factors.append((factor_function.NextYrActiveReturn(), name))    
             case _:
                 print(f"factor {name} is not available.")
     

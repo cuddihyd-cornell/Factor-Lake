@@ -3,10 +3,18 @@ from market_object import load_data
 from calculate_holdings import rebalance_portfolio
 import unittest
 import pandas as pd
+import pytest
+import os
 
+@pytest.mark.integration
+@pytest.mark.slow
+@pytest.mark.skipif(
+    not os.getenv('SUPABASE_URL') or not os.getenv('SUPABASE_KEY'),
+    reason="Requires Supabase credentials (SUPABASE_URL and SUPABASE_KEY)"
+)
 class TestFactorLakePortfolio(unittest.TestCase):
     def setUp(self):
-        self.data = load_data()
+        self.data = load_data(use_supabase=True)
         
         # Ensure 'Year' column exists for consistency
         if 'Year' not in self.data.columns:
@@ -15,7 +23,7 @@ class TestFactorLakePortfolio(unittest.TestCase):
         self.start_year = 2002
         self.end_year = 2023
         self.initial_aum = 1
-        self.expected_final_value = 5.29
+        self.expected_final_value = 5.29 #supabase data sig digitss
         self.expected_growth = 429.07
         self.factors = [Momentum6m(), ROE(), ROA()]
         self.restrict_fossil_fuels = False  # Allow flexibility for testing both scenarios
