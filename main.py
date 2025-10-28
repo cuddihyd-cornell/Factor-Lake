@@ -78,7 +78,10 @@ def main():
         years=results['years'],
         portfolio_values=results['portfolio_values'],
         selected_factors=list(factor_names),
-        restrict_fossil_fuels=restrict_fossil_fuels
+        restrict_fossil_fuels=restrict_fossil_fuels,
+        benchmark_returns=results.get('benchmark_returns'),
+        benchmark_label='Russell 2000',
+        initial_investment=results.get('portfolio_values', [None])[0]
     )
 
 
