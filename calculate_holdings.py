@@ -129,12 +129,12 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         overall_growth = (aum - initial_aum) / initial_aum if initial_aum else 0
         print(f"Final Portfolio Value after {end_year}: ${aum:.2f}")
         print(f"Overall Growth from {start_year} to {end_year}: {overall_growth * 100:.2f}%")
-
+        print(f"\n==== Performance Metrics ====")
     information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
     if information_ratio is None:
         print("Information Ratio could not be calculated due to zero tracking error.")
 
-    # === Performance Metrics ===
+#backtest stats 
     portfolio_returns_np = np.array(portfolio_returns)
     benchmark_returns_np = np.array(benchmark_returns)
     active_returns = portfolio_returns_np - benchmark_returns_np
@@ -143,8 +143,6 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
     annualized_volatility = np.std(portfolio_returns_np, ddof=1) * np.sqrt(1)  # yearly data
     active_volatility = np.std(active_returns, ddof=1)
 
-    print("\nAnnualized Volatility calculated using square-root-of-time method (std × √1 for yearly data).")
-    print(f"\n==== Performance Metrics ====")
     print(f"Annualized Return (Portfolio): {annualized_return:.2%}")
     print(f"Annualized Volatility (Portfolio): {annualized_volatility:.2%}")
     print(f"Active Volatility (Portfolio vs Benchmark): {active_volatility:.2%}")
