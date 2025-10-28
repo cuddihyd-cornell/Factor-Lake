@@ -2,8 +2,8 @@ from market_object import MarketObject
 from portfolio import Portfolio
 import numpy as np
 import pandas as pd
-from factor_lake.docs.factors_doc import FACTOR_DOCS
-from factor_lake.utils.factor_utils import normalize_series
+from factors_doc import FACTOR_DOCS
+from factor_utils import normalize_series
 
 def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     # Apply sector restrictions if enabled
