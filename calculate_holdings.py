@@ -136,7 +136,7 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
 
 #backtest stats 
     portfolio_returns_np = np.array(portfolio_returns)
-    benchmark_returns_np = np.array(benchmark_returns)
+    benchmark_returns_np = np.array(benchmark_returns) / 100
     active_returns = portfolio_returns_np - benchmark_returns_np
 
     annualized_return = (np.prod(1 + portfolio_returns_np))**(1 / len(portfolio_returns_np)) - 1
