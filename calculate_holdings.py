@@ -21,7 +21,7 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
                     print(f"Fossil filter (holdings) removed {len(removed_tickers)} tickers: {', '.join(removed_tickers[:25])}{' ...' if len(removed_tickers) > 25 else ''}")
             except Exception:
                 pass
-            market.stocks = market.stocks[mask].copy()x
+            market.stocks = market.stocks[mask].copy()
 
     # Get eligible stocks for factor calculation
     # Prefer vectorized series from market.stocks when available so we can normalize
