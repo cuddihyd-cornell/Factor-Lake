@@ -1,5 +1,6 @@
 # portfolio_growth_plot.py
 
+from matplotlib.pylab import double
 import matplotlib.pyplot as plt
 
 
@@ -58,7 +59,7 @@ def plot_portfolio_growth(years,
         # Normalize return units: support both percent (e.g. 34.62) and decimal (0.3462)
         def to_decimal(x):
             try:
-                v = float(x)
+                v = double(x)
             except Exception:
                 return 0.0
             return v if abs(v) <= 1 else v / 100.0
