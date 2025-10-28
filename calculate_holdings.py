@@ -93,9 +93,11 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
     portfolio_returns = []
     benchmark_returns = []
     portfolio_values = [aum]
+
     for year in range(start_year, end_year):
         market = MarketObject(data.loc[data['Year'] == year], year)
         yearly_portfolio = []
+
         for factor in factors:
             factor_portfolio = calculate_holdings(
                 factor=factor,
@@ -104,34 +106,54 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
                 restrict_fossil_fuels=restrict_fossil_fuels
             )
             yearly_portfolio.append(factor_portfolio)
+
         if year < end_year:
             next_market = MarketObject(data.loc[data['Year'] == year + 1], year + 1)
             growth, total_start_value, total_end_value = calculate_growth(yearly_portfolio, next_market, market, verbosity)
+
             if verbosity and verbosity >= 2:
                 print(f"Year {year} to {year + 1}: Growth: {growth:.2%}, "
                       f"Start Value: ${total_start_value:.2f}, End Value: ${total_end_value:.2f}")
+
             aum = total_end_value
             portfolio_returns.append(growth)
             benchmark_return = get_benchmark_return(year)
             benchmark_returns.append(benchmark_return)
             portfolio_values.append(aum)
-        years.append(year+1)
+
+        years.append(year + 1)
+
     if verbosity and verbosity >= 1:
         print("\n==== Final Summary ====")
         print(f"Initial Portfolio Value: ${initial_aum:.2f}")
         overall_growth = (aum - initial_aum) / initial_aum if initial_aum else 0
         print(f"Final Portfolio Value after {end_year}: ${aum:.2f}")
         print(f"Overall Growth from {start_year} to {end_year}: {overall_growth * 100:.2f}%")
+        print(f"\n==== Performance Metrics ====")
     information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
     if information_ratio is None:
         print("Information Ratio could not be calculated due to zero tracking error.")
+
+#backtest stats 
+    portfolio_returns_np = np.array(portfolio_returns)
+    benchmark_returns_np = np.array(benchmark_returns) / 100
+    active_returns = portfolio_returns_np - benchmark_returns_np
+
+    annualized_return = (np.prod(1 + portfolio_returns_np))**(1 / len(portfolio_returns_np)) - 1
+    annualized_volatility = np.std(portfolio_returns_np, ddof=1) * np.sqrt(1)  # yearly data
+    active_volatility = np.std(active_returns, ddof=1)
+
+    print(f"Annualized Return (Portfolio): {annualized_return:.2%}")
+    print(f"Annualized Volatility (Portfolio): {annualized_volatility:.2%}")
+    print(f"Active Volatility (Portfolio vs Benchmark): {active_volatility:.2%}")
+
     return {
         'final_value': aum,
         'yearly_returns': portfolio_returns,
         'benchmark_returns': benchmark_returns,
         'years': years,
         'portfolio_values': portfolio_values
-     }
+    }
     
 def get_benchmark_return(year):
     """
