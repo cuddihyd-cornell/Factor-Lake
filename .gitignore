@@ -1,3 +1,37 @@
 __pycache__/
 *.pyc
 scripts/extract_functions.py
+
+# Environment variables (IMPORTANT - contains secrets!)
+.env
+.env.local
+
+# Streamlit
+.streamlit/
+*.streamlit/
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data files (if you don't want to commit large data)
+*.xlsx
+*.csv
+data/
