@@ -1,8 +1,8 @@
-# 📊 Factor-Lake Streamlit Application
+# Factor-Lake Streamlit Application
 
 An interactive web application for factor-based portfolio analysis and backtesting.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Local Installation
 
@@ -40,30 +40,30 @@ An interactive web application for factor-based portfolio analysis and backtesti
 
 ## ✨ Features
 
-### 📊 Interactive Factor Selection
-- **Momentum Factors**: 1-month, 6-month, 12-month momentum
-- **Value Factors**: Price-to-Book, Book-to-Price, Forward Earnings Yield
-- **Profitability Factors**: ROE, ROA
-- **Growth Factors**: Asset Growth, CapEx Growth
-- **Quality Factors**: Low Accruals, Low Volatility
+### Interactive Factor Selection
+* **Momentum Factors**: 1-month, 6-month, 12-month momentum
+* **Value Factors**: Price-to-Book, Book-to-Price, Forward Earnings Yield
+* **Profitability Factors**: ROE, ROA
+* **Growth Factors**: Asset Growth, CapEx Growth
+* **Quality Factors**: Low Accruals, Low Volatility
 
-### 🌱 ESG & Sector Filters
+### ESG & Sector Filters
 - Exclude fossil fuel companies
 - Select specific sectors
 - Customize universe
 
-### 📈 Portfolio Analysis
+### Portfolio Analysis
 - Backtest from 2002-2023
 - Compare against Russell 2000 benchmark
 - Year-by-year performance breakdown
 - Calculate CAGR and Alpha
 
-### 💾 Export Results
+### Export Results
 - Download performance data as CSV
 - Export portfolio holdings
 - Save visualizations
 
-## 🎯 How to Use
+## How to Use
 
 1. **Configure Settings** (Left Sidebar)
    - Choose data source (Supabase or Excel)
@@ -92,7 +92,7 @@ An interactive web application for factor-based portfolio analysis and backtesti
    - Compare to benchmark
    - Download CSV data
 
-## 📁 File Structure
+## File Structure
 
 ```
 Factor-Lake_2/
@@ -112,7 +112,7 @@ Factor-Lake_2/
 └── README.md
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -136,7 +136,7 @@ Or set in the app's sidebar when running.
 - Must contain required columns
 - See data format requirements
 
-## 📊 Data Requirements
+## Data Requirements
 
 Your data source must include:
 - `Ticker-Region`: Stock ticker with region
@@ -145,7 +145,7 @@ Your data source must include:
 - Factor columns (e.g., "ROE using 9/30 Data")
 - `FactSet Industry`: For sector filtering
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Import Errors
 If you see `ModuleNotFoundError`:
@@ -190,7 +190,7 @@ pip install --upgrade streamlit
 - Restart runtime if needed
 - Check that git clone succeeded
 
-## 🎨 Customization
+## Customization
 
 ### Add New Factors
 
@@ -226,25 +226,25 @@ st.markdown("""
 """, unsafe_allow_html=True)
 ```
 
-## 📚 Resources
+## Resources
 
 - [Streamlit Documentation](https://docs.streamlit.io/)
 - [Project Repository](https://github.com/FMDX-7/Factor-Lake_2)
 - [Factor Investing Guide](https://www.investopedia.com/terms/f/factor-investing.asp)
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 This tool is for educational and research purposes only. Past performance does not guarantee future results. Always consult with a qualified financial advisor before making investment decisions.
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please see `CONTRIBUTING.md` for guidelines.
 
-## 📄 License
+## License
 
 See LICENSE file for details.
 
-## 🙋 Support
+## Support
 
 For issues and questions:
 - Open an issue on GitHub
@@ -253,4 +253,4 @@ For issues and questions:
 
 ---
 
-**Happy Investing! 📈**
+**Happy Investing!**

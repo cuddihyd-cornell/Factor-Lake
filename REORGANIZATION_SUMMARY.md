@@ -1,4 +1,4 @@
-# 🎉 Factor-Lake Project Reorganization Complete!
+# Factor-Lake Project Reorganization Complete!
 
 ## ✅ What Was Done
 
@@ -83,7 +83,7 @@ Then open your browser to `http://localhost:8501`
    
 4. **Click the generated URL** to access your app
 
-## 📁 New Project Structure
+## New Project Structure
 
 ```
 Factor-Lake_2/
@@ -121,7 +121,7 @@ Factor-Lake_2/
 └── ...
 ```
 
-## 🎯 Key Features of Streamlit App
+## Key Features of Streamlit App
 
 ### Interactive Configuration
 - ✅ Choose data source (Supabase or Excel)
@@ -139,11 +139,10 @@ All factors organized by category:
 - **Growth**: Asset Growth, CapEx Growth
 - **Quality**: Accruals, Low Volatility
 
-### Results & Analytics
-- 📊 Performance metrics (Total Return, CAGR, Alpha)
-- 📈 Portfolio growth chart vs. Russell 2000
-- 📅 Year-by-year performance table
-- 💾 CSV export functionality
+   - Performance metrics (Total Return, CAGR, Alpha)
+   - Portfolio growth chart vs. Russell 2000
+   - Year-by-year performance table
+   - CSV export functionality
 
 ### Professional UI
 - Clean, modern design
@@ -152,7 +151,7 @@ All factors organized by category:
 - Error handling with user-friendly messages
 - Progress indicators
 
-## 🧪 Testing
+## Testing
 
 All tests still work! The import path fixes ensure:
 
@@ -169,14 +168,14 @@ python run_tests.py holdings
 python run_tests.py coverage
 ```
 
-## 📚 Documentation
+## Documentation
 
 - **STREAMLIT_README.md**: Complete Streamlit app guide
 - **colab_setup.ipynb**: Step-by-step Colab instructions
 - **README.md**: Original project documentation
 - **CONTRIBUTING.md**: Contribution guidelines
 
-## 🎓 For Google Colab Users
+## For Google Colab Users
 
 The `colab_setup.ipynb` notebook makes it incredibly easy:
 
@@ -186,7 +185,7 @@ The `colab_setup.ipynb` notebook makes it incredibly easy:
 4. **Works from anywhere** with internet
 5. **Pre-configured environment**
 
-## 🔧 Next Steps
+## Next Steps
 
 ### To use the app:
 1. Install Streamlit: `pip install streamlit`
@@ -204,7 +203,7 @@ The `colab_setup.ipynb` notebook makes it incredibly easy:
 2. Share the Colab notebook link
 3. Anyone can run it with their own ngrok token
 
-## ⚡ Quick Test
+## Quick Test
 
 Test that everything works:
 
@@ -222,7 +221,7 @@ python run_tests.py fast
 python run_streamlit.py
 ```
 
-## 🎉 Summary
+## Summary
 
 Your Factor-Lake project now has:
 - ✅ Clean, organized structure with `src/` folder

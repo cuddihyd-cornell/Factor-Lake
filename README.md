@@ -1,10 +1,10 @@
-# Factor-Lake 📊
+# Factor-Lake
 
 **Interactive Factor-Based Portfolio Analysis Tool**
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FMDX-7/Factor-Lake_2/blob/main/colab_setup.ipynb)
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Run on Google Colab (No Installation Required)
 **Click the badge above** or see [Colab Instructions](COLAB_INSTRUCTIONS.md)
@@ -20,7 +20,7 @@ python run_streamlit.py
 
 Open http://localhost:8501 in your browser
 
-## ✨ Features
+## Features
 
 - **Factor Selection**: 13+ investment factors (Momentum, Value, Quality, Growth, Profitability)
 - **ESG Filters**: Exclude fossil fuel companies
@@ -30,7 +30,7 @@ Open http://localhost:8501 in your browser
 - **Interactive Charts**: Visualize portfolio growth
 - **Export Results**: Download performance data as CSV
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 Factor-Lake_2/
@@ -41,17 +41,17 @@ Factor-Lake_2/
 └── README.md
 ```
 
-## 📚 Documentation
+## Documentation
 
 - [Colab Instructions](COLAB_INSTRUCTIONS.md) - Run on Google Colab
 - [Streamlit Styling Guide](STREAMLIT_STYLING_GUIDE.md) - Customize the interface
 - [Supabase Setup](SUPABASE_SETUP.md) - Database configuration
 
-## 🤝 Contributing
+## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
-## 📄 License
+## License
 
 See LICENSE file for details.
  

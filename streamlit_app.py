@@ -210,13 +210,11 @@ def main():
         
         excel_file = None
         if not use_supabase:
-            excel_file = st.text_input(
-                "Excel file path:",
-                value="data.xlsx",
-                help="Path to your Excel file with market data"
-            )
+            # Use preset path for Excel file in Colab
+            excel_file = "/content/drive/MyDrive/yourfile.xlsx"  # Change to your actual file path
+            st.markdown(f"**Using preset Excel file:** `{excel_file}`")
         
-        st.divider()
+    st.write("---")
         
         # Fossil Fuel Restriction
         st.subheader("🌱 ESG Filters")
@@ -226,7 +224,7 @@ def main():
             help="Exclude oil, gas, coal, and fossil energy companies"
         )
         
-        st.divider()
+    st.write("---")
         
         # Sector Selection
         st.subheader("🏢 Sector Selection")
@@ -240,7 +238,7 @@ def main():
                 help="Choose which sectors to include in the analysis"
             )
         
-        st.divider()
+    st.write("---")
         
         # Date Range
         st.subheader("📅 Analysis Period")
@@ -250,7 +248,7 @@ def main():
         with col2:
             end_year = st.number_input("End Year", min_value=2002, max_value=2023, value=2023)
         
-        st.divider()
+    st.write("---")
         
         # Initial Investment
         st.subheader("💰 Initial Investment")
@@ -264,7 +262,7 @@ def main():
             help="Starting portfolio value in dollars"
         )
         
-        st.divider()
+    st.write("---")
         
         # Verbosity
         st.subheader("📋 Output Detail")
@@ -279,11 +277,11 @@ def main():
         show_loading = st.checkbox("Show data loading progress", value=True)
     
     # Main content area
-    tab1, tab2, tab3 = st.tabs(["📊 Analysis", "📈 Results", "ℹ️ About"])
+    tab1, tab2, tab3 = st.tabs(["Analysis", "Results", "About"])
     
     with tab1:
-        st.header("Factor Selection")
-        st.write("Select one or more factors for your portfolio strategy:")
+    st.header("Factor Selection")
+    st.write("Select one or more factors for your portfolio strategy:")
         
         # Create columns for factor selection
         col1, col2 = st.columns(2)
@@ -291,39 +289,34 @@ def main():
         with col1:
             st.subheader("Momentum Factors")
             momentum_factors = {
-                '12-Mo Momentum %': st.checkbox('12-Month Momentum', key='12m'),
-                '6-Mo Momentum %': st.checkbox('6-Month Momentum', key='6m'),
-                '1-Mo Momentum %': st.checkbox('1-Month Momentum', key='1m')
+                '12-Mo Momentum %': st.checkbox('12-Mo Momentum %', key='12m'),
+                '6-Mo Momentum %': st.checkbox('6-Mo Momentum %', key='6m'),
+                '1-Mo Momentum %': st.checkbox('1-Mo Momentum %', key='1m')
             }
-            
             st.subheader("Profitability Factors")
             profitability_factors = {
-                'ROE using 9/30 Data': st.checkbox('Return on Equity (ROE)', key='roe'),
-                'ROA using 9/30 Data': st.checkbox('Return on Assets (ROA)', key='roa'),
-                'ROA %': st.checkbox('ROA Percentage', key='roa_pct')
+                'ROE using 9/30 Data': st.checkbox('ROE using 9/30 Data', key='roe'),
+                'ROA using 9/30 Data': st.checkbox('ROA using 9/30 Data', key='roa'),
+                'ROA %': st.checkbox('ROA %', key='roa_pct')
             }
-            
             st.subheader("Growth Factors")
             growth_factors = {
-                '1-Yr Asset Growth %': st.checkbox('Asset Growth', key='asset_growth'),
-                '1-Yr CapEX Growth %': st.checkbox('CapEx Growth', key='capex_growth')
+                '1-Yr Asset Growth %': st.checkbox('1-Yr Asset Growth %', key='asset_growth'),
+                '1-Yr CapEX Growth %': st.checkbox('1-Yr CapEX Growth %', key='capex_growth')
             }
-        
         with col2:
             st.subheader("Value Factors")
             value_factors = {
-                'Price to Book Using 9/30 Data': st.checkbox('Price to Book', key='ptb'),
-                'Book/Price': st.checkbox('Book to Price', key='btp'),
-                'Next FY Earns/P': st.checkbox('Forward Earnings Yield', key='fey')
+                'Price to Book Using 9/30 Data': st.checkbox('Price to Book Using 9/30 Data', key='ptb'),
+                'Book/Price': st.checkbox('Book/Price', key='btp'),
+                'Next FY Earns/P': st.checkbox('Next FY Earns/P', key='fey')
             }
-            
             st.subheader("Quality Factors")
             quality_factors = {
-                'Accruals/Assets': st.checkbox('Accruals to Assets', key='accruals'),
-                '1-Yr Price Vol %': st.checkbox('Price Volatility (Low Vol)', key='vol')
+                'Accruals/Assets': st.checkbox('Accruals/Assets', key='accruals'),
+                '1-Yr Price Vol %': st.checkbox('1-Yr Price Vol %', key='vol')
             }
-        
-        # Combine all factors
+        # Only include the specified 13 factors
         all_factor_selections = {
             **momentum_factors,
             **profitability_factors,
@@ -334,7 +327,7 @@ def main():
         
         selected_factor_names = [name for name, selected in all_factor_selections.items() if selected]
         
-        st.divider()
+    st.write("---")
         
         # Display selected factors
         if selected_factor_names:
@@ -342,7 +335,7 @@ def main():
         else:
             st.warning("⚠️ Please select at least one factor to run the analysis")
         
-        st.divider()
+    st.write("---")
         
         # Load Data Button
         col1, col2, col3 = st.columns([1, 2, 1])
@@ -398,7 +391,7 @@ def main():
                             st.error(f"❌ Error loading data: {str(e)}")
                             st.exception(e)
         
-        st.divider()
+    st.write("---")
         
         # Run Analysis Button
         if st.session_state.data_loaded:
@@ -436,13 +429,13 @@ def main():
                                 st.exception(e)
     
     with tab2:
-        st.header("Portfolio Performance Results")
+    st.header("Portfolio Performance Results")
         
         if st.session_state.results is not None:
             results = st.session_state.results
             
             # Summary metrics
-            st.subheader("📊 Performance Summary")
+            st.subheader("Performance Summary")
             
             col1, col2, col3, col4 = st.columns(4)
             
@@ -471,7 +464,7 @@ def main():
             st.divider()
             
             # Portfolio growth chart
-            st.subheader("📈 Portfolio Growth Over Time")
+            st.subheader("Portfolio Growth Over Time")
             
             fig, ax = plt.subplots(figsize=(12, 6))
             
@@ -502,7 +495,7 @@ def main():
             st.divider()
             
             # Year-by-year performance table
-            st.subheader("📅 Year-by-Year Performance")
+            st.subheader("Year-by-Year Performance")
             
             perf_data = {
                 'Year': results['years'],
@@ -527,11 +520,11 @@ def main():
             st.divider()
             
             # Download results
-            st.subheader("💾 Download Results")
+            st.subheader("Download Results")
             
             csv = perf_df.to_csv(index=False)
             st.download_button(
-                label="📥 Download Performance Data (CSV)",
+                label="Download Performance Data (CSV)",
                 data=csv,
                 file_name=f"portfolio_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv"
@@ -541,59 +534,59 @@ def main():
             st.info("👈 Run an analysis from the Analysis tab to see results here")
     
     with tab3:
-        st.header("About Factor-Lake Portfolio Analysis")
+    st.header("About Factor-Lake Portfolio Analysis")
         
-        st.markdown("""
-        ### 🎯 What is Factor Investing?
+    st.markdown("""
+    ### What is Factor Investing?
         
-        Factor investing is a strategy that targets specific drivers of returns across asset classes. 
-        This tool allows you to backtest various factor strategies on historical market data.
+    Factor investing is a strategy that targets specific drivers of returns across asset classes. 
+    This tool allows you to backtest various factor strategies on historical market data.
         
-        ### 📊 Available Factors
+    ### Available Factors
         
-        **Momentum Factors:**
-        - Stocks that have performed well in the past tend to continue performing well
+    **Momentum Factors:**
+    - Stocks that have performed well in the past tend to continue performing well
         
-        **Value Factors:**
-        - Stocks trading at low prices relative to their fundamentals
+    **Value Factors:**
+    - Stocks trading at low prices relative to their fundamentals
         
-        **Profitability Factors:**
-        - Companies with strong profit margins and returns
+    **Profitability Factors:**
+    - Companies with strong profit margins and returns
         
-        **Growth Factors:**
-        - Companies with strong growth in assets and capital expenditure
+    **Growth Factors:**
+    - Companies with strong growth in assets and capital expenditure
         
-        **Quality Factors:**
-        - Companies with stable earnings and low volatility
+    **Quality Factors:**
+    - Companies with stable earnings and low volatility
         
-        ### 🔧 How to Use
+    ### How to Use
         
-        1. **Configure** your data source and filters in the sidebar
-        2. **Select** one or more factors in the Analysis tab
-        3. **Load** the market data
-        4. **Run** the portfolio analysis
-        5. **View** results and download performance data
+    1. **Configure** your data source and filters in the sidebar
+    2. **Select** one or more factors in the Analysis tab
+    3. **Load** the market data
+    4. **Run** the portfolio analysis
+    5. **View** results and download performance data
         
-        ### 📚 Data Sources
+    ### Data Sources
         
-        - **Supabase**: Cloud-hosted database with historical market data
-        - **Excel**: Load data from a local Excel file
+    - **Supabase**: Cloud-hosted database with historical market data
+    - **Excel**: Load data from a local Excel file
         
-        ### ⚠️ Disclaimer
+    ### Disclaimer
         
-        This tool is for educational and research purposes only. Past performance does not guarantee future results.
-        Always consult with a qualified financial advisor before making investment decisions.
+    This tool is for educational and research purposes only. Past performance does not guarantee future results.
+    Always consult with a qualified financial advisor before making investment decisions.
         
-        ### 🔗 Resources
+    ### Resources
         
-        - [Project Repository](https://github.com/FMDX-7/Factor-Lake_2)
-        - [Documentation](README.md)
+    - [Project Repository](https://github.com/FMDX-7/Factor-Lake_2)
+    - [Documentation](README.md)
         
-        ---
+    ---
         
-        **Version:** 1.0.0  
-        **Last Updated:** October 2025
-        """)
+    **Version:** 1.0.0  
+    **Last Updated:** October 2025
+    """)
 
 if __name__ == "__main__":
     main()
