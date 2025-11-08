@@ -196,8 +196,7 @@ def main():
     
     # Sidebar - Configuration
     with st.sidebar:
-        st.header("⚙️ Configuration")
-        
+        st.header("Configuration")
         # Data Source Selection
         st.subheader("Data Source")
         use_supabase = st.radio(
@@ -207,27 +206,24 @@ def main():
             index=0,
             help="Choose between cloud database or local Excel file"
         )
-        
+
         excel_file = None
         if not use_supabase:
             # Use preset path for Excel file in Colab
             excel_file = "/content/drive/MyDrive/yourfile.xlsx"  # Change to your actual file path
             st.markdown(f"**Using preset Excel file:** `{excel_file}`")
-        
-    st.write("---")
-        
+
+        st.write("---")
         # Fossil Fuel Restriction
-        st.subheader("🌱 ESG Filters")
+        st.subheader("ESG Filters")
         restrict_fossil_fuels = st.checkbox(
             "Restrict Fossil Fuel Companies",
             value=False,
             help="Exclude oil, gas, coal, and fossil energy companies"
         )
-        
-    st.write("---")
-        
+        st.write("---")
         # Sector Selection
-        st.subheader("🏢 Sector Selection")
+        st.subheader("Sector Selection")
         sector_filter_enabled = st.checkbox("Enable Sector Filter", value=False)
         selected_sectors = []
         if sector_filter_enabled:
@@ -237,21 +233,17 @@ def main():
                 default=SECTOR_OPTIONS,
                 help="Choose which sectors to include in the analysis"
             )
-        
-    st.write("---")
-        
+        st.write("---")
         # Date Range
-        st.subheader("📅 Analysis Period")
+        st.subheader("Analysis Period")
         col1, col2 = st.columns(2)
         with col1:
             start_year = st.number_input("Start Year", min_value=2002, max_value=2023, value=2002)
         with col2:
             end_year = st.number_input("End Year", min_value=2002, max_value=2023, value=2023)
-        
-    st.write("---")
-        
+        st.write("---")
         # Initial Investment
-        st.subheader("💰 Initial Investment")
+        st.subheader("Initial Investment")
         initial_aum = st.number_input(
             "Initial AUM ($)",
             min_value=1.0,
@@ -261,11 +253,9 @@ def main():
             format="%.2f",
             help="Starting portfolio value in dollars"
         )
-        
-    st.write("---")
-        
+        st.write("---")
         # Verbosity
-        st.subheader("📋 Output Detail")
+        st.subheader("Output Detail")
         verbosity_level = st.select_slider(
             "Verbosity Level",
             options=[0, 1, 2, 3],
@@ -273,15 +263,14 @@ def main():
             format_func=lambda x: ["Silent", "Basic", "Detailed", "Debug"][x],
             help="Control the amount of detail in output logs"
         )
-        
         show_loading = st.checkbox("Show data loading progress", value=True)
-    
+
     # Main content area
     tab1, tab2, tab3 = st.tabs(["Analysis", "Results", "About"])
     
     with tab1:
-    st.header("Factor Selection")
-    st.write("Select one or more factors for your portfolio strategy:")
+        st.header("Factor Selection")
+        st.write("Select one or more factors for your portfolio strategy:")
         
         # Create columns for factor selection
         col1, col2 = st.columns(2)
