@@ -184,7 +184,7 @@ SECTOR_OPTIONS = [
 
 def main():
     # Header
-    st.markdown('<div class="main-header">📊 Factor-Lake Portfolio Analysis</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Factor-Lake Portfolio Analysis</div>', unsafe_allow_html=True)
     
     st.markdown("""
     Welcome to the Factor-Lake Portfolio Analysis tool! This application allows you to:
@@ -316,20 +316,20 @@ def main():
         
         selected_factor_names = [name for name, selected in all_factor_selections.items() if selected]
         
-    st.write("---")
+        st.write("---")
         
         # Display selected factors
         if selected_factor_names:
-            st.success(f"✅ Selected {len(selected_factor_names)} factor(s): {', '.join(selected_factor_names)}")
+            st.success(f"Selected {len(selected_factor_names)} factor(s): {', '.join(selected_factor_names)}")
         else:
-            st.warning("⚠️ Please select at least one factor to run the analysis")
+            st.warning("Please select at least one factor to run the analysis")
         
-    st.write("---")
+        st.write("---")
         
         # Load Data Button
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            if st.button("🔄 Load Data", use_container_width=True, type="primary"):
+            if st.button("Load Data", use_container_width=True, type="primary"):
                 if not use_supabase and not excel_file:
                     st.error("Please provide an Excel file path")
                 else:
@@ -367,26 +367,26 @@ def main():
                             st.session_state.rdata = rdata
                             st.session_state.data_loaded = True
                             
-                            st.success(f"✅ Data loaded successfully! {len(rdata)} records from {rdata['Year'].min()} to {rdata['Year'].max()}")
+                            st.success(f"Data loaded successfully! {len(rdata)} records from {rdata['Year'].min()} to {rdata['Year'].max()}")
                             
                             # Show data preview
-                            with st.expander("📋 Data Preview"):
+                            with st.expander("Data Preview"):
                                 st.dataframe(rdata.head(100), use_container_width=True)
                                 st.write(f"**Shape:** {rdata.shape[0]} rows × {rdata.shape[1]} columns")
                                 st.write(f"**Years:** {sorted(rdata['Year'].unique())}")
                                 st.write(f"**Unique Tickers:** {rdata['Ticker'].nunique()}")
                         
                         except Exception as e:
-                            st.error(f"❌ Error loading data: {str(e)}")
+                            st.error(f"Error loading data: {str(e)}")
                             st.exception(e)
         
-    st.write("---")
+        st.write("---")
         
         # Run Analysis Button
         if st.session_state.data_loaded:
             col1, col2, col3 = st.columns([1, 2, 1])
             with col2:
-                if st.button("🚀 Run Portfolio Analysis", use_container_width=True, type="primary", disabled=len(selected_factor_names) == 0):
+                if st.button("Run Portfolio Analysis", use_container_width=True, type="primary", disabled=len(selected_factor_names) == 0):
                     if not selected_factor_names:
                         st.error("Please select at least one factor")
                     else:
@@ -411,14 +411,14 @@ def main():
                                 st.session_state.restrict_ff = restrict_fossil_fuels
                                 st.session_state.initial_aum = initial_aum
                                 
-                                st.success("✅ Analysis complete! Check the Results tab.")
+                                st.success("Analysis complete! Check the Results tab.")
                             
                             except Exception as e:
-                                st.error(f"❌ Error running analysis: {str(e)}")
+                                st.error(f"Error running analysis: {str(e)}")
                                 st.exception(e)
     
     with tab2:
-    st.header("Portfolio Performance Results")
+        st.header("Portfolio Performance Results")
         
         if st.session_state.results is not None:
             results = st.session_state.results
@@ -523,59 +523,59 @@ def main():
             st.info("👈 Run an analysis from the Analysis tab to see results here")
     
     with tab3:
-    st.header("About Factor-Lake Portfolio Analysis")
+        st.header("About Factor-Lake Portfolio Analysis")
         
-    st.markdown("""
-    ### What is Factor Investing?
-        
-    Factor investing is a strategy that targets specific drivers of returns across asset classes. 
-    This tool allows you to backtest various factor strategies on historical market data.
-        
-    ### Available Factors
-        
-    **Momentum Factors:**
-    - Stocks that have performed well in the past tend to continue performing well
-        
-    **Value Factors:**
-    - Stocks trading at low prices relative to their fundamentals
-        
-    **Profitability Factors:**
-    - Companies with strong profit margins and returns
-        
-    **Growth Factors:**
-    - Companies with strong growth in assets and capital expenditure
-        
-    **Quality Factors:**
-    - Companies with stable earnings and low volatility
-        
-    ### How to Use
-        
-    1. **Configure** your data source and filters in the sidebar
-    2. **Select** one or more factors in the Analysis tab
-    3. **Load** the market data
-    4. **Run** the portfolio analysis
-    5. **View** results and download performance data
-        
-    ### Data Sources
-        
-    - **Supabase**: Cloud-hosted database with historical market data
-    - **Excel**: Load data from a local Excel file
-        
-    ### Disclaimer
-        
-    This tool is for educational and research purposes only. Past performance does not guarantee future results.
-    Always consult with a qualified financial advisor before making investment decisions.
-        
-    ### Resources
-        
-    - [Project Repository](https://github.com/FMDX-7/Factor-Lake_2)
-    - [Documentation](README.md)
-        
-    ---
-        
-    **Version:** 1.0.0  
-    **Last Updated:** October 2025
-    """)
+        st.markdown("""
+        ### What is Factor Investing?
+            
+        Factor investing is a strategy that targets specific drivers of returns across asset classes. 
+        This tool allows you to backtest various factor strategies on historical market data.
+            
+        ### Available Factors
+            
+        **Momentum Factors:**
+        - Stocks that have performed well in the past tend to continue performing well
+            
+        **Value Factors:**
+        - Stocks trading at low prices relative to their fundamentals
+            
+        **Profitability Factors:**
+        - Companies with strong profit margins and returns
+            
+        **Growth Factors:**
+        - Companies with strong growth in assets and capital expenditure
+            
+        **Quality Factors:**
+        - Companies with stable earnings and low volatility
+            
+        ### How to Use
+            
+        1. **Configure** your data source and filters in the sidebar
+        2. **Select** one or more factors in the Analysis tab
+        3. **Load** the market data
+        4. **Run** the portfolio analysis
+        5. **View** results and download performance data
+            
+        ### Data Sources
+            
+        - **Supabase**: Cloud-hosted database with historical market data
+        - **Excel**: Load data from a local Excel file
+            
+        ### Disclaimer
+            
+        This tool is for educational and research purposes only. Past performance does not guarantee future results.
+        Always consult with a qualified financial advisor before making investment decisions.
+            
+        ### Resources
+            
+        - [Project Repository](https://github.com/FMDX-7/Factor-Lake_2)
+        - [Documentation](README.md)
+            
+        ---
+            
+        **Version:** 1.0.0  
+        **Last Updated:** October 2025
+        """)
 
 if __name__ == "__main__":
     main()
