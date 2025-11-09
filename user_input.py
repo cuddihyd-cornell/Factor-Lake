@@ -70,4 +70,58 @@ def get_factors(available_factors):
                 print(f"factor {name} is not available.")
     
     return factors
+
+
+def get_top_bottom_options(selected_factor_names):
+    """
+    Ask the user if they'd like to plot top/bottom N% portfolios and gather options.
+
+    Returns:
+        None if user doesn't want the plot, otherwise a dict with keys:
+        - percent (int)
+        - show_bottom (bool)
+        - chosen_index (int) index into selected_factor_names
+    """
+    if not selected_factor_names:
+        print("No selected factors available for top/bottom analysis.")
+        return None
+
+    resp = input("Would you like to plot Top/Bottom N% portfolios for a factor? (y/n): ").strip().lower()
+    if resp not in ('y', 'yes'):
+        return None
+
+    # Percent input
+    while True:
+        try:
+            pct = int(input("Enter percentage N (1-100) for Top/Bottom selection (e.g. 10): "))
+            if pct < 1 or pct > 100:
+                raise ValueError
+            break
+        except ValueError:
+            print("Please enter an integer between 1 and 100.")
+
+    show_bottom = False
+    if pct < 100:
+        sb = input(f"Also show Bottom {pct}%? (y/n): ").strip().lower()
+        show_bottom = sb in ('y', 'yes')
+
+    # Choose which selected factor to analyze
+    print("Selected factors:")
+    for i, name in enumerate(selected_factor_names):
+        print(f"{i + 1}. {name}")
+
+    while True:
+        try:
+            choice = int(input(f"Choose factor index to analyze (1-{len(selected_factor_names)}): "))
+            if choice < 1 or choice > len(selected_factor_names):
+                raise ValueError
+            break
+        except ValueError:
+            print("Please enter a valid index number.")
+
+    return {
+        'percent': pct,
+        'show_bottom': show_bottom,
+        'chosen_index': choice - 1
+    }
     
