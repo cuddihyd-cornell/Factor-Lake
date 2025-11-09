@@ -69,7 +69,9 @@ def get_factors(available_factors):
             case _:
                 print(f"factor {name} is not available.")
     
-    return factors
+    # After selecting factors, optionally gather top/bottom options immediately
+    tb_opts = get_top_bottom_options([name for _, name in factors]) if factors else None
+    return factors, tb_opts
 
 
 def get_top_bottom_options(selected_factor_names):

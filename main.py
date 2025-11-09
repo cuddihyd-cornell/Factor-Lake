@@ -58,7 +58,7 @@ def main():
     rdata = rdata[cols_to_keep]
 
     ### Get user selections ###
-    factors = get_factors(available_factors)
+    factors, tb_opts = get_factors(available_factors)
     verbosity_level = get_verbosity_level()
 
     # Separate factor objects from their names for use downstream
@@ -85,8 +85,7 @@ def main():
         initial_investment=results.get('portfolio_values', [None])[0]
     )
 
-    # Optional: Top/Bottom N% analysis
-    tb_opts = get_top_bottom_options(list(factor_names))
+    # Optional: Top/Bottom N% analysis (tb_opts collected during factor selection)
     if tb_opts:
         chosen_idx = tb_opts['chosen_index']
         # factor_objects may be empty if user didn't select factors; guard against that
