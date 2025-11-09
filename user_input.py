@@ -107,23 +107,10 @@ def get_top_bottom_options(selected_factor_names):
         sb = input(f"Also show Bottom {pct}%? (y/n): ").strip().lower()
         show_bottom = sb in ('y', 'yes')
 
-    # Choose which selected factor to analyze
-    print("Selected factors:")
-    for i, name in enumerate(selected_factor_names):
-        print(f"{i + 1}. {name}")
-
-    while True:
-        try:
-            choice = int(input(f"Choose factor index to analyze (1-{len(selected_factor_names)}): "))
-            if choice < 1 or choice > len(selected_factor_names):
-                raise ValueError
-            break
-        except ValueError:
-            print("Please enter a valid index number.")
-
+    # We will analyze the combined ranking across ALL selected factors
+    # (no need to choose a single factor)
     return {
         'percent': pct,
-        'show_bottom': show_bottom,
-        'chosen_index': choice - 1
+        'show_bottom': show_bottom
     }
     

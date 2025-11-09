@@ -1,6 +1,6 @@
 from market_object import load_data
 from calculate_holdings import rebalance_portfolio
-from user_input import get_factors, get_top_bottom_options
+from user_input import get_factors
 from verbosity_options import get_verbosity_level
 from fossil_fuel_restriction import get_fossil_fuel_restriction
 from supabase_input import get_supabase_preference, get_data_loading_verbosity
@@ -87,15 +87,14 @@ def main():
 
     # Optional: Top/Bottom N% analysis (tb_opts collected during factor selection)
     if tb_opts:
-        chosen_idx = tb_opts['chosen_index']
         # factor_objects may be empty if user didn't select factors; guard against that
         if not factor_objects:
             print("No factor objects available to run top/bottom analysis.")
         else:
-            factor_to_use = list(factor_objects)[chosen_idx]
+            factor_list = list(factor_objects)
             plot_top_bottom_percent(
                 rdata=rdata,
-                factor=factor_to_use,
+                factors=factor_list,
                 years=results['years'],
                 percent=tb_opts['percent'],
                 show_bottom=tb_opts['show_bottom'],

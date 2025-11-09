@@ -4,7 +4,7 @@ import math
 
 
 def plot_top_bottom_percent(rdata,
-                            factor,
+                            factors,
                             years,
                             percent=10,
                             show_bottom=True,
@@ -18,7 +18,7 @@ def plot_top_bottom_percent(rdata,
 
     Parameters:
         rdata (pd.DataFrame): Full market data (must contain 'Year')
-        factor (Factors): A factor object with .get(ticker, market) method
+        factors (list[Factors]): List of factor objects with .get(ticker, market)
         years (list[int]): Ordered list of years to simulate (e.g. [2002,2003,...])
         percent (int): Percent (1-100) used to select top/bottom N% (100 disables bottom)
         show_bottom (bool): Whether to compute and plot bottom-N% portfolio
@@ -44,22 +44,42 @@ def plot_top_bottom_percent(rdata,
 
     # Helper to compute top/bottom tickers for a given MarketObject
     def select_percent_tickers(market, pct, which='top'):
-        factor_values = {}
-        for ticker in market.stocks.index:
-            try:
-                v = factor.get(ticker, market)
-                if v is None:
+        # Build per-factor rank dictionaries (rank normalized 0..1, higher is better)
+        rank_dicts = []
+        for factor in factors:
+            values = {}
+            for ticker in market.stocks.index:
+                try:
+                    v = factor.get(ticker, market)
+                    if v is None:
+                        continue
+                    if isinstance(v, (int, float)):
+                        values[ticker] = float(v)
+                except Exception:
                     continue
-                # Accept numeric values only
-                if isinstance(v, (int, float)):
-                    factor_values[ticker] = float(v)
-            except Exception:
+            if not values:
                 continue
+            # compute ranks 0..1 ascending -> lower value rank 0, highest rank 1
+            items = sorted(values.items(), key=lambda x: x[1])
+            n_items = len(items)
+            ranks = {}
+            for idx, (t, _) in enumerate(items):
+                ranks[t] = idx / (n_items - 1) if n_items > 1 else 0.5
+            rank_dicts.append(ranks)
 
-        if not factor_values:
+        if not rank_dicts:
             return []
 
-        sorted_items = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
+        # combine ranks by averaging across available factor ranks per ticker
+        combined = {}
+        tickers_union = set().union(*[set(d.keys()) for d in rank_dicts])
+        for t in tickers_union:
+            vals = [d[t] for d in rank_dicts if t in d]
+            if not vals:
+                continue
+            combined[t] = sum(vals) / len(vals)
+
+        sorted_items = sorted(combined.items(), key=lambda x: x[1], reverse=True)
         n = max(1, math.floor(len(sorted_items) * (pct / 100.0)))
         if which == 'top':
             return [t for t, _ in sorted_items[:n]]
@@ -152,7 +172,13 @@ def plot_top_bottom_percent(rdata,
     if benchmark_values is not None and len(benchmark_values) == len(years):
         plt.plot(years, benchmark_values, marker='s', linestyle='--', color='r', label=benchmark_label)
 
-    plt.title(f"Top/Bottom {percent}% Portfolios ({factor}) vs {benchmark_label}")
+    # Build a readable factor-set name
+    try:
+        factor_set_name = ", ".join([str(f) for f in factors])
+    except Exception:
+        factor_set_name = "Selected Factors"
+
+    plt.title(f"Top/Bottom {percent}% Portfolios ({factor_set_name}) vs {benchmark_label}")
     plt.xlabel('Year')
     plt.ylabel('Dollar Invested ($)')
     plt.grid(True)
