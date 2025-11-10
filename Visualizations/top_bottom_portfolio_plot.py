@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from market_object import MarketObject
 import math
+import csv
 
 
 def plot_top_bottom_percent(rdata,
@@ -12,8 +13,9 @@ def plot_top_bottom_percent(rdata,
                             benchmark_returns=None,
                             benchmark_label='Russell 2000',
                             initial_investment=None,
-                            debug=False,
-                            debug_years=3):
+                            require_all_factors=True,
+                            debug_csv=False,
+                            csv_path='top_bottom_debug.csv'):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from `factor` each year, alongside a benchmark.
@@ -44,6 +46,10 @@ def plot_top_bottom_percent(rdata,
     if initial_investment is None:
         initial_investment = 1.0
 
+    # Prepare CSV debug storage if requested
+    if debug_csv:
+        debug_rows = []
+
     # Helper to compute top/bottom tickers for a given MarketObject
     def select_percent_tickers(market, pct, which='top'):
         # Build per-factor rank dictionaries (rank normalized 0..1, higher is better)
@@ -72,21 +78,33 @@ def plot_top_bottom_percent(rdata,
         if not rank_dicts:
             return []
 
+        # Determine tickers to combine: either intersection (require values for all factors)
+        # or union (use any available). Intersection reduces one-factor-only artifacts.
+        if require_all_factors:
+            tickers_set = set(rank_dicts[0].keys())
+            for d in rank_dicts[1:]:
+                tickers_set &= set(d.keys())
+            # If intersection is empty, fall back to union to avoid losing universe completely
+            if not tickers_set:
+                tickers_set = set().union(*[set(d.keys()) for d in rank_dicts])
+        else:
+            tickers_set = set().union(*[set(d.keys()) for d in rank_dicts])
+
         # combine ranks by averaging across available factor ranks per ticker
         combined = {}
-        tickers_union = set().union(*[set(d.keys()) for d in rank_dicts])
-        for t in tickers_union:
+        for t in tickers_set:
             vals = [d[t] for d in rank_dicts if t in d]
             if not vals:
                 continue
             combined[t] = sum(vals) / len(vals)
 
         sorted_items = sorted(combined.items(), key=lambda x: x[1], reverse=True)
-        n = max(1, math.floor(len(sorted_items) * (pct / 100.0)))
+        universe_size = len(sorted_items)
+        n = max(1, math.floor(universe_size * (pct / 100.0)))
         if which == 'top':
-            return [t for t, _ in sorted_items[:n]]
+            return [t for t, _ in sorted_items[:n]], universe_size, n
         else:
-            return [t for t, _ in sorted_items[-n:]]
+            return [t for t, _ in sorted_items[-n:]], universe_size, n
 
     # Prepare arrays
     top_values = [initial_investment]
@@ -101,7 +119,7 @@ def plot_top_bottom_percent(rdata,
         next_market = MarketObject(rdata.loc[rdata['Year'] == next_year], next_year)
 
         # Top
-        top_tickers = select_percent_tickers(market, percent, 'top')
+        top_tickers, universe_size_top, n_top = select_percent_tickers(market, percent, 'top')
         start_top = 0.0
         end_top = 0.0
         # Build equal-dollar positions at start using market prices
@@ -126,7 +144,7 @@ def plot_top_bottom_percent(rdata,
 
         # Bottom
         if show_bottom:
-            bottom_tickers = select_percent_tickers(market, percent, 'bottom')
+            bottom_tickers, universe_size_bot, n_bot = select_percent_tickers(market, percent, 'bottom')
             start_bottom = 0.0
             end_bottom = 0.0
             if bottom_tickers:
@@ -145,50 +163,21 @@ def plot_top_bottom_percent(rdata,
                 end_bottom = bottom_values[-1]
             bottom_values.append(end_bottom)
 
-        # Debug printing for first few years to diagnose performance drivers
-        if debug and i < debug_years:
-            def avg_entry_and_returns(tickers):
-                entries = []
-                rets = []
-                for t in tickers:
-                    try:
-                        entry = market.get_price(t)
-                        exitp = next_market.get_price(t)
-                        if entry is None:
-                            continue
-                        if exitp is None:
-                            exitp = entry
-                        entries.append(entry)
-                        rets.append((exitp / entry) - 1 if entry else 0)
-                    except Exception:
-                        continue
-                return (sum(entries) / len(entries)) if entries else None, (sum(rets) / len(rets)) if rets else None
-
-            def avg_factor_values(tickers):
-                vals = {}
-                for f in factors:
-                    vlist = []
-                    for t in tickers:
-                        try:
-                            v = f.get(t, market)
-                            if v is not None:
-                                vlist.append(float(v))
-                        except Exception:
-                            continue
-                    vals[str(f)] = (sum(vlist) / len(vlist)) if vlist else None
-                return vals
-
-            print(f"\nDEBUG Year {year} -> {next_year}")
-            print(f" Top {percent}% tickers ({len(top_tickers)}): {top_tickers[:10]}{('...' if len(top_tickers)>10 else '')}")
-            avg_entry_top, avg_ret_top = avg_entry_and_returns(top_tickers)
-            print(f"  Top avg entry price: {avg_entry_top}, avg next-year return: {avg_ret_top}")
-            print(f"  Top avg factor values: {avg_factor_values(top_tickers)}")
-
-            if show_bottom:
-                print(f" Bottom {percent}% tickers ({len(bottom_tickers)}): {bottom_tickers[:10]}{('...' if len(bottom_tickers)>10 else '')}")
-                avg_entry_bot, avg_ret_bot = avg_entry_and_returns(bottom_tickers)
-                print(f"  Bottom avg entry price: {avg_entry_bot}, avg next-year return: {avg_ret_bot}")
-                print(f"  Bottom avg factor values: {avg_factor_values(bottom_tickers)}")
+        # Collect CSV debug info if requested
+        if debug_csv:
+            top_count = len(top_tickers)
+            bottom_count = len(bottom_tickers) if show_bottom else 0
+            # prefer universe_size_top, else universe_size_bot, else length of market
+            universe = universe_size_top if 'universe_size_top' in locals() and universe_size_top is not None else (
+                universe_size_bot if 'universe_size_bot' in locals() and universe_size_bot is not None else len(market.stocks.index)
+            )
+            debug_rows.append({
+                'year': year,
+                'universe_size': universe,
+                'n_selected': n_top,
+                'top_count': top_count,
+                'bottom_count': bottom_count
+            })
 
     # Years alignment: top_values and bottom_values now have length len(years)
     # Compute benchmark dollar series if provided (same logic as portfolio_growth_plot)
@@ -231,4 +220,18 @@ def plot_top_bottom_percent(rdata,
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
+    # Write debug CSV if requested
+    if debug_csv:
+        # Ensure header order
+        fieldnames = ['year', 'universe_size', 'n_selected', 'top_count', 'bottom_count']
+        try:
+            with open(csv_path, 'w', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=fieldnames)
+                writer.writeheader()
+                for r in debug_rows:
+                    writer.writerow({k: r.get(k) for k in fieldnames})
+            print(f"Wrote top/bottom debug CSV to: {csv_path}")
+        except Exception as e:
+            print(f"Failed to write debug CSV: {e}")
+
     plt.show()
