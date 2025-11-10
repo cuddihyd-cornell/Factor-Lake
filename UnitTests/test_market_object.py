@@ -5,7 +5,7 @@ Tests data loading, market object creation, and price retrieval
 import pytest
 import pandas as pd
 import numpy as np
-from market_object import MarketObject, load_data, _standardize_column_names
+from src.market_object import MarketObject, load_data, _standardize_column_names
 
 
 class TestDataLoading:

@@ -29,7 +29,7 @@ An interactive web application for factor-based portfolio analysis and backtesti
    - Upload `colab_setup.ipynb` to Google Colab
    - Or click: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/FMDX-7/Factor-Lake_2/blob/main/colab_setup.ipynb)
 
-2. **Get an ngrok auth token:**
+2. **Get an ngrok auth token (Optional - most likely not needed):**
    - Visit: https://dashboard.ngrok.com/get-started/your-authtoken
    - Sign up for free
    - Copy your auth token

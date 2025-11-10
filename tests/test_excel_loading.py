@@ -2,12 +2,12 @@
 Quick test to verify Excel loading works
 """
 
-from market_object import load_data
+from src.market_object import load_data
 
 # Test with fake Excel path (will fail but shows the flow works)
 print("Testing Excel loading flow...")
 try:
-    data = load_data(use_supabase=False, excel_file_path="test.xlsx")
+    data = load_data(use_supabase=False, data_path="test.xlsx")
     print(f"Data loaded successfully: {len(data)} rows")
 except Exception as e:
     print(f"Expected error (file doesn't exist): {e}")

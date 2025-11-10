@@ -1,4 +1,4 @@
-from market_object import load_data
+from .market_object import load_data
 
 class Factors:
     def __init__(self, column_name):

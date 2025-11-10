@@ -16,8 +16,8 @@ if env_path.exists():
                 key, value = line.split('=', 1)
                 os.environ[key] = value
 
-# Add src directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+# Add src directory to path (one level up from app/)
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 import streamlit as st
 import pandas as pd

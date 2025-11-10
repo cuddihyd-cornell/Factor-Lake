@@ -1,5 +1,5 @@
 import pandas as pd
-from market_object import _apply_sector_filter
+from src.market_object import _apply_sector_filter
 
 def test_apply_sector_filter_basic():
     df = pd.DataFrame({
