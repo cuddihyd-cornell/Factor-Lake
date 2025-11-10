@@ -93,7 +93,7 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
             use_supabase = False
     
     if not use_supabase:
-        # Fallback to local file (Excel or CSV). Accepts a data_path (CSV or Excel).
+        # Fallback to local file (Excel or CSV). Accepts a data_path (CSV/Excel path OR file-like object).
         try:
             from google.colab import drive  # type: ignore
             in_colab = True
@@ -108,8 +108,8 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
             print("Excel/CSV fallback unavailable: provide data_path when not using Supabase or run in Colab.")
             raise RuntimeError("Excel/CSV fallback unavailable: provide data_path when not using Supabase or run in Colab.")
 
-        # Mount Drive in Colab if necessary
-        if in_colab and not os.path.exists('/content/drive'):
+        # Mount Drive in Colab if necessary (only for string paths)
+        if in_colab and isinstance(data_path, str) and not os.path.exists('/content/drive'):
             try:
                 print("Mounting Google Drive...")
                 drive.mount('/content/drive')
@@ -117,12 +117,26 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
                 pass
 
         try:
-            print(f"Loading data file from: {data_path}")
-            lp = str(data_path).lower()
-            if lp.endswith('.csv'):
-                rdata = pd.read_csv(data_path)
+            # Check if data_path is a file-like object (e.g., Streamlit UploadedFile) or a string path
+            is_file_like = hasattr(data_path, 'read')
+            
+            if is_file_like:
+                # Handle file-like objects (e.g., from Streamlit file_uploader)
+                file_name = getattr(data_path, 'name', 'uploaded_file')
+                print(f"Loading data from uploaded file: {file_name}")
+                
+                if file_name.lower().endswith('.csv'):
+                    rdata = pd.read_csv(data_path)
+                else:
+                    rdata = pd.read_excel(data_path, sheet_name=excel_sheet, header=2, skiprows=[3, 4])
             else:
-                rdata = pd.read_excel(data_path, sheet_name=excel_sheet, header=2, skiprows=[3, 4])
+                # Handle string paths
+                print(f"Loading data file from: {data_path}")
+                lp = str(data_path).lower()
+                if lp.endswith('.csv'):
+                    rdata = pd.read_csv(data_path)
+                else:
+                    rdata = pd.read_excel(data_path, sheet_name=excel_sheet, header=2, skiprows=[3, 4])
 
             # Normalize column names and remove duplicate columns
             rdata.columns = rdata.columns.str.strip()

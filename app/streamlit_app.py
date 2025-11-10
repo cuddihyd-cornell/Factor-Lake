@@ -208,10 +208,30 @@ def main():
         )
 
         excel_file = None
+        uploaded_file = None
         if not use_supabase:
-            # Use preset path for Excel file in Colab
-            excel_file = "/content/drive/MyDrive/yourfile.xlsx"  # Change to your actual file path
-            st.markdown(f"**Using preset Excel file:** `{excel_file}`")
+            # Option 1: Upload file directly (works everywhere)
+            uploaded_file = st.file_uploader(
+                "Upload Excel/CSV file:",
+                type=['xlsx', 'xls', 'csv'],
+                help="Upload your market data file"
+            )
+            
+            # Option 2: Enter Google Drive path (for Colab)
+            st.markdown("**OR** enter Google Drive path (Colab only):")
+            excel_file = st.text_input(
+                "File path:",
+                value="",
+                placeholder="/content/drive/MyDrive/yourfolder/data.xlsx",
+                help="For Colab: /content/drive/MyDrive/..."
+            )
+            
+            if uploaded_file:
+                st.success(f"✅ File uploaded: {uploaded_file.name}")
+            elif excel_file and os.path.exists(excel_file):
+                st.success(f"✅ File found: {excel_file}")
+            elif excel_file:
+                st.warning(f"⚠️ File not found at: {excel_file}")
 
         st.write("---")
         # Fossil Fuel Restriction
@@ -330,16 +350,28 @@ def main():
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if st.button("Load Data", use_container_width=True, type="primary"):
-                if not use_supabase and not excel_file:
-                    st.error("Please provide an Excel file path")
+                if not use_supabase and not excel_file and not uploaded_file:
+                    st.error("Please upload a file or provide an Excel file path")
                 else:
                     with st.spinner("Loading market data..."):
                         try:
                             sectors_to_use = selected_sectors if sector_filter_enabled else None
+                            
+                            # Determine data source
+                            data_source = None
+                            if use_supabase:
+                                data_source = None  # load_data will use Supabase
+                            elif uploaded_file:
+                                # Use uploaded file object directly
+                                data_source = uploaded_file
+                            elif excel_file:
+                                # Use file path
+                                data_source = excel_file
+                            
                             rdata = load_data(
                                 restrict_fossil_fuels=restrict_fossil_fuels,
                                 use_supabase=use_supabase,
-                                data_path=excel_file if not use_supabase else None,
+                                data_path=data_source if not use_supabase else None,
                                 show_loading_progress=show_loading,
                                 sectors=sectors_to_use
                             )
