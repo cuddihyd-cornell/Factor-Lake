@@ -11,7 +11,9 @@ def plot_top_bottom_percent(rdata,
                             restrict_fossil_fuels=False,
                             benchmark_returns=None,
                             benchmark_label='Russell 2000',
-                            initial_investment=None):
+                            initial_investment=None,
+                            debug=False,
+                            debug_years=3):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from `factor` each year, alongside a benchmark.
@@ -142,6 +144,51 @@ def plot_top_bottom_percent(rdata,
             else:
                 end_bottom = bottom_values[-1]
             bottom_values.append(end_bottom)
+
+        # Debug printing for first few years to diagnose performance drivers
+        if debug and i < debug_years:
+            def avg_entry_and_returns(tickers):
+                entries = []
+                rets = []
+                for t in tickers:
+                    try:
+                        entry = market.get_price(t)
+                        exitp = next_market.get_price(t)
+                        if entry is None:
+                            continue
+                        if exitp is None:
+                            exitp = entry
+                        entries.append(entry)
+                        rets.append((exitp / entry) - 1 if entry else 0)
+                    except Exception:
+                        continue
+                return (sum(entries) / len(entries)) if entries else None, (sum(rets) / len(rets)) if rets else None
+
+            def avg_factor_values(tickers):
+                vals = {}
+                for f in factors:
+                    vlist = []
+                    for t in tickers:
+                        try:
+                            v = f.get(t, market)
+                            if v is not None:
+                                vlist.append(float(v))
+                        except Exception:
+                            continue
+                    vals[str(f)] = (sum(vlist) / len(vlist)) if vlist else None
+                return vals
+
+            print(f"\nDEBUG Year {year} -> {next_year}")
+            print(f" Top {percent}% tickers ({len(top_tickers)}): {top_tickers[:10]}{('...' if len(top_tickers)>10 else '')}")
+            avg_entry_top, avg_ret_top = avg_entry_and_returns(top_tickers)
+            print(f"  Top avg entry price: {avg_entry_top}, avg next-year return: {avg_ret_top}")
+            print(f"  Top avg factor values: {avg_factor_values(top_tickers)}")
+
+            if show_bottom:
+                print(f" Bottom {percent}% tickers ({len(bottom_tickers)}): {bottom_tickers[:10]}{('...' if len(bottom_tickers)>10 else '')}")
+                avg_entry_bot, avg_ret_bot = avg_entry_and_returns(bottom_tickers)
+                print(f"  Bottom avg entry price: {avg_entry_bot}, avg next-year return: {avg_ret_bot}")
+                print(f"  Bottom avg factor values: {avg_factor_values(bottom_tickers)}")
 
     # Years alignment: top_values and bottom_values now have length len(years)
     # Compute benchmark dollar series if provided (same logic as portfolio_growth_plot)
