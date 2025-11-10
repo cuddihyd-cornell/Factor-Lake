@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 from market_object import MarketObject
 import math
-import csv
 
 
 def plot_top_bottom_percent(rdata,
@@ -13,9 +12,7 @@ def plot_top_bottom_percent(rdata,
                             benchmark_returns=None,
                             benchmark_label='Russell 2000',
                             initial_investment=None,
-                            require_all_factors=True,
-                            debug_csv=False,
-                            csv_path='top_bottom_debug.csv'):
+                            require_all_factors=True):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from `factor` each year, alongside a benchmark.
@@ -46,9 +43,7 @@ def plot_top_bottom_percent(rdata,
     if initial_investment is None:
         initial_investment = 1.0
 
-    # Prepare CSV debug storage if requested
-    if debug_csv:
-        debug_rows = []
+    # (no CSV debug by default)
 
     # Helper to compute top/bottom tickers for a given MarketObject
     def select_percent_tickers(market, pct, which='top'):
@@ -163,21 +158,7 @@ def plot_top_bottom_percent(rdata,
                 end_bottom = bottom_values[-1]
             bottom_values.append(end_bottom)
 
-        # Collect CSV debug info if requested
-        if debug_csv:
-            top_count = len(top_tickers)
-            bottom_count = len(bottom_tickers) if show_bottom else 0
-            # prefer universe_size_top, else universe_size_bot, else length of market
-            universe = universe_size_top if 'universe_size_top' in locals() and universe_size_top is not None else (
-                universe_size_bot if 'universe_size_bot' in locals() and universe_size_bot is not None else len(market.stocks.index)
-            )
-            debug_rows.append({
-                'year': year,
-                'universe_size': universe,
-                'n_selected': n_top,
-                'top_count': top_count,
-                'bottom_count': bottom_count
-            })
+        # (no CSV debug collection)
 
     # Years alignment: top_values and bottom_values now have length len(years)
     # Compute benchmark dollar series if provided (same logic as portfolio_growth_plot)
@@ -220,18 +201,6 @@ def plot_top_bottom_percent(rdata,
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    # Write debug CSV if requested
-    if debug_csv:
-        # Ensure header order
-        fieldnames = ['year', 'universe_size', 'n_selected', 'top_count', 'bottom_count']
-        try:
-            with open(csv_path, 'w', newline='') as f:
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                for r in debug_rows:
-                    writer.writerow({k: r.get(k) for k in fieldnames})
-            print(f"Wrote top/bottom debug CSV to: {csv_path}")
-        except Exception as e:
-            print(f"Failed to write debug CSV: {e}")
+    # (no CSV debug output)
 
     plt.show()
