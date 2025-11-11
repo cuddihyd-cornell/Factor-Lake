@@ -21,8 +21,10 @@ def plot_top_bottom_percent(rdata,
                             initial_investment=None,
                             require_all_factors=True,
                             verbose=True,
-                            drop_missing_next_price=False,
-                            selection_mode='simple'):
+                            drop_missing_next_price=True,
+                            selection_mode='by_factor',
+                            return_details=False,
+                            weight_mode='equal'):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from a list of factors each year, alongside a benchmark.
@@ -203,6 +205,10 @@ def plot_top_bottom_percent(rdata,
     top_values = [initial_investment]
     bottom_values = [initial_investment] if show_bottom else None
 
+    # Detailed diagnostics collected per-year when requested. Structure:
+    # { 'years': [..], 'per_year': [ { year, combined_scores, top: {positions, avg_return,start,end}, bottom: {...} } ] }
+    details = {'years': [], 'per_year': []} if return_details else None
+
     for i in range(len(years) - 1):
         year = years[i]
         next_year = years[i + 1]
@@ -214,10 +220,14 @@ def plot_top_bottom_percent(rdata,
         top_factor_stats = []
         bottom_factor_stats = []
 
+        # Pre-compute combined raw scores for diagnostics / simple mode
+        sorted_combined_scores = compute_raw_combined_scores(market)
+
         # Top cohort
         start_top = 0.0
         end_top = 0.0
         top_returns = []
+        top_positions = []
         top_dropped = 0
         # aggregate list for verbose printing (populated in both selection modes)
         top_tickers = []
@@ -246,9 +256,11 @@ def plot_top_bottom_percent(rdata,
                         start_top += shares * entry
                         end_top += shares * exit_price
                         try:
-                            top_returns.append((exit_price / entry) - 1.0)
+                            r = (exit_price / entry) - 1.0
                         except Exception:
-                            top_returns.append(0.0)
+                            r = 0.0
+                        top_returns.append(r)
+                        top_positions.append({'ticker': t, 'entry': entry, 'exit': exit_price, 'shares': shares, 'weight': equal, 'return': r})
                 else:
                     end_top = top_values[-1]
         elif selection_mode == 'by_factor':
@@ -318,13 +330,15 @@ def plot_top_bottom_percent(rdata,
                     if valid:
                         equal = per_factor_alloc / len(valid)
                         for t, entry, exit_price in valid:
-                            shares = equal / entry
-                            start_top += shares * entry
-                            end_top += shares * exit_price
-                            try:
-                                top_returns.append((exit_price / entry) - 1.0)
-                            except Exception:
-                                top_returns.append(0.0)
+                                shares = equal / entry
+                                start_top += shares * entry
+                                end_top += shares * exit_price
+                                try:
+                                    r = (exit_price / entry) - 1.0
+                                except Exception:
+                                    r = 0.0
+                                top_returns.append(r)
+                                top_positions.append({'ticker': t, 'entry': entry, 'exit': exit_price, 'shares': shares, 'weight': equal, 'return': r})
                 else:
                     # record zero selection for this factor
                     top_factor_stats.append((col, 0, 0, 0))
@@ -361,9 +375,11 @@ def plot_top_bottom_percent(rdata,
                         start_top += shares * entry
                         end_top += shares * exit_price
                         try:
-                            top_returns.append((exit_price / entry) - 1.0)
+                            r = (exit_price / entry) - 1.0
                         except Exception:
-                            top_returns.append(0.0)
+                            r = 0.0
+                        top_returns.append(r)
+                        top_positions.append({'ticker': t, 'entry': entry, 'exit': exit_price, 'shares': shares, 'weight': equal, 'return': r})
                 else:
                     end_top = top_values[-1]
         else:
@@ -380,6 +396,7 @@ def plot_top_bottom_percent(rdata,
         start_bottom = 0.0
         end_bottom = 0.0
         bottom_returns = []
+        bottom_positions = []
         if show_bottom:
             assert bottom_values is not None
             if selection_mode == 'combined':
@@ -405,9 +422,11 @@ def plot_top_bottom_percent(rdata,
                             start_bottom += shares * entry
                             end_bottom += shares * exit_price
                             try:
-                                bottom_returns.append((exit_price / entry) - 1.0)
+                                r = (exit_price / entry) - 1.0
                             except Exception:
-                                bottom_returns.append(0.0)
+                                r = 0.0
+                            bottom_returns.append(r)
+                            bottom_positions.append({'ticker': t, 'entry': entry, 'exit': exit_price, 'shares': shares, 'weight': equal_b, 'return': r})
                     else:
                         end_bottom = bottom_values[-1]
                 else:
@@ -475,13 +494,15 @@ def plot_top_bottom_percent(rdata,
                         if valid:
                             equal = per_factor_alloc_b / len(valid)
                             for t, entry, exit_price in valid:
-                                shares = equal / entry
-                                start_bottom += shares * entry
-                                end_bottom += shares * exit_price
-                                try:
-                                    bottom_returns.append((exit_price / entry) - 1.0)
-                                except Exception:
-                                    bottom_returns.append(0.0)
+                                    shares = equal / entry
+                                    start_bottom += shares * entry
+                                    end_bottom += shares * exit_price
+                                    try:
+                                        r = (exit_price / entry) - 1.0
+                                    except Exception:
+                                        r = 0.0
+                                    bottom_returns.append(r)
+                                    bottom_positions.append({'ticker': t, 'entry': entry, 'exit': exit_price, 'shares': shares, 'weight': equal, 'return': r})
                 if end_bottom == 0:
                     end_bottom = bottom_values[-1]
             elif selection_mode == 'simple':
@@ -510,13 +531,15 @@ def plot_top_bottom_percent(rdata,
                     if valid:
                         equal_b = bottom_values[-1] / len(valid)
                         for t, entry, exit_price in valid:
-                            shares = equal_b / entry
-                            start_bottom += shares * entry
-                            end_bottom += shares * exit_price
-                            try:
-                                bottom_returns.append((exit_price / entry) - 1.0)
-                            except Exception:
-                                bottom_returns.append(0.0)
+                                shares = equal_b / entry
+                                start_bottom += shares * entry
+                                end_bottom += shares * exit_price
+                                try:
+                                    r = (exit_price / entry) - 1.0
+                                except Exception:
+                                    r = 0.0
+                                bottom_returns.append(r)
+                                bottom_positions.append({'ticker': t, 'entry': entry, 'exit': exit_price, 'shares': shares, 'weight': equal_b, 'return': r})
                     else:
                         end_bottom = bottom_values[-1]
             else:
@@ -575,6 +598,39 @@ def plot_top_bottom_percent(rdata,
                 print(f"  Bottom dropped tickers this year (missing prices): {bot_dropped}")
             if n_bot and n_bot < MIN_COHORT_WARNING:
                 print(f"  Warning: Bottom cohort size is small ({n_bot}); results will be noisy.")
+        # Collect structured details for this year if requested
+        try:
+            avg_top_r = sum(top_returns) / len(top_returns) if top_returns else 0.0
+        except Exception:
+            avg_top_r = 0.0
+        try:
+            avg_bot_r = sum(bottom_returns) / len(bottom_returns) if bottom_returns else 0.0
+        except Exception:
+            avg_bot_r = 0.0
+
+        if details is not None:
+            per_year = {
+                'year': year,
+                'combined_scores': sorted_combined_scores,
+                'top': {
+                    'positions': top_positions,
+                    'avg_return': avg_top_r,
+                    'start': start_top,
+                    'end': end_top,
+                    'dropped': top_dropped,
+                    'n_selected': n_top,
+                },
+                'bottom': {
+                    'positions': bottom_positions,
+                    'avg_return': avg_bot_r,
+                    'start': start_bottom,
+                    'end': end_bottom,
+                    'dropped': bot_dropped,
+                    'n_selected': n_bot,
+                }
+            }
+            details['years'].append(year)
+            details['per_year'].append(per_year)
 
     # Build benchmark dollar series (same approach as other plotting code)
     benchmark_values = None
@@ -617,3 +673,5 @@ def plot_top_bottom_percent(rdata,
     plt.tight_layout()
     plt.show()
     # end of function
+    if details is not None:
+        return details
