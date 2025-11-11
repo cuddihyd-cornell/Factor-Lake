@@ -656,7 +656,8 @@ def plot_top_bottom_percent(rdata,
     plt.figure(figsize=(10, 6))
     plt.plot(years, top_values, marker='o', linestyle='-', color='g', label=f'Top {percent}%')
     if show_bottom and bottom_values is not None:
-        plt.plot(years, bottom_values, marker='o', linestyle='-', color='m', label=f'Bottom {percent}%')
+        # plot bottom cohort as negative values so the curve appears below zero
+        plt.plot(years, [-v for v in bottom_values], marker='o', linestyle='-', color='m', label=f'Bottom {percent}%')
     if benchmark_values is not None and len(benchmark_values) == len(years):
         plt.plot(years, benchmark_values, marker='s', linestyle='--', color='r', label=benchmark_label)
 
