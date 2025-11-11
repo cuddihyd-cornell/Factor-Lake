@@ -67,17 +67,18 @@ def plot_top_bottom_percent(rdata,
             values = {}
             col = getattr(factor, 'column_name', str(factor))
             # If the factor has a column in the market, aggregate samples per ticker
+            # Ignore null samples when averaging (do not treat them as zeros)
             if col in market.stocks.columns:
                 series = pd.to_numeric(market.stocks[col], errors='coerce')
-                # Treat nulls as zero for averaging as requested
-                series = series.fillna(0.0)
-                # group by ticker index and average across samples
+                # group by ticker index and average across non-null samples
                 grouped = series.groupby(series.index).mean()
+                grouped = grouped.dropna()
                 for t, v in grouped.items():
                     try:
                         values[t] = float(v)
                     except Exception:
-                        values[t] = 0.0
+                        # skip non-convertible values
+                        continue
             else:
                 # Fall back to calling the factor getter per row, aggregate per ticker
                 samples = {}
@@ -86,11 +87,13 @@ def plot_top_bottom_percent(rdata,
                         v = factor.get(idx, market)
                     except Exception:
                         v = None
-                    # treat missing sample as zero
+                    if v is None:
+                        # ignore null sample
+                        continue
                     try:
-                        sample_val = 0.0 if v is None else float(v)
+                        sample_val = float(v)
                     except Exception:
-                        sample_val = 0.0
+                        continue
                     samples.setdefault(idx, []).append(sample_val)
                 for t, vals in samples.items():
                     if vals:
@@ -202,13 +205,21 @@ def plot_top_bottom_percent(rdata,
                 col = getattr(factor, 'column_name', str(factor))
                 # prefer vectorized series if available
                 if col in market.stocks.columns:
-                    # aggregate multiple samples per ticker by treating NaNs as zeros and averaging
+                    # aggregate multiple samples per ticker by averaging non-null samples
                     series = pd.to_numeric(market.stocks[col], errors='coerce')
-                    series = series.fillna(0.0)
                     grouped = series.groupby(series.index).mean()
+                    grouped = grouped.dropna()
                     higher_is_better = FACTOR_DOCS.get(col, {}).get('higher_is_better', True)
-                    normed = normalize_series(grouped, higher_is_better=higher_is_better)
-                    items = [(t, v) for t, v in normed.dropna().items()]
+                    # Use raw averaged values but convert to a score where higher is better
+                    # (score = v for higher_is_better True, score = -v for False).
+                    items = []
+                    for t, v in grouped.items():
+                        try:
+                            val = float(v)
+                        except Exception:
+                            continue
+                        score = val if higher_is_better else -val
+                        items.append((t, score))
                 else:
                     items = []
                     for t in market.stocks.index:
@@ -318,13 +329,19 @@ def plot_top_bottom_percent(rdata,
                 for factor in factors:
                     col = getattr(factor, 'column_name', str(factor))
                     if col in market.stocks.columns:
-                        # aggregate multiple samples per ticker by treating NaNs as zeros and averaging
+                        # aggregate multiple samples per ticker by averaging non-null samples
                         series = pd.to_numeric(market.stocks[col], errors='coerce')
-                        series = series.fillna(0.0)
                         grouped = series.groupby(series.index).mean()
+                        grouped = grouped.dropna()
                         higher_is_better = FACTOR_DOCS.get(col, {}).get('higher_is_better', True)
-                        normed = normalize_series(grouped, higher_is_better=higher_is_better)
-                        items = [(t, v) for t, v in normed.dropna().items()]
+                        items = []
+                        for t, v in grouped.items():
+                            try:
+                                val = float(v)
+                            except Exception:
+                                continue
+                            score = val if higher_is_better else -val
+                            items.append((t, score))
                     else:
                         items = []
                         for t in market.stocks.index:
