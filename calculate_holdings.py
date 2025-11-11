@@ -100,7 +100,8 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
     portfolio_returns = []
     benchmark_returns = []
     portfolio_values = [aum]
-
+    
+#Estimated Placeholders
     risk_free_rate_source = 'SOFR (Oct 1)'
     risk_free_rate_lookup = {
         2002: 0.015, 2003: 0.014, 2004: 0.017, 2005: 0.025, 2006: 0.035,
