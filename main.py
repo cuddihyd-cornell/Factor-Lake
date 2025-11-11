@@ -1,6 +1,7 @@
 from market_object import load_data
 from calculate_holdings import rebalance_portfolio
 from user_input import get_factors
+from user_input import get_user_options
 from verbosity_options import get_verbosity_level
 from fossil_fuel_restriction import get_fossil_fuel_restriction
 from supabase_input import get_supabase_preference, get_data_loading_verbosity
@@ -29,6 +30,7 @@ def main():
         show_loading_progress=show_loading,
         sectors=selected_sectors
     )
+    opts = get_user_options()
 
     ### Data preprocessing ###
     # Note: Fossil fuel filtering is applied later in calculate_holdings() for each year
@@ -70,7 +72,9 @@ def main():
         start_year=2002, end_year=2023,
         initial_aum=1,
         verbosity=verbosity_level,
-        restrict_fossil_fuels=restrict_fossil_fuels
+        restrict_fossil_fuels=restrict_fossil_fuels,
+        weighting=opts["weighting"],
+        top_percent=opts["top_percent"]
     )
     
     # Plot portfolio growth

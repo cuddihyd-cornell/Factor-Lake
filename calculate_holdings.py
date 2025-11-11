@@ -4,8 +4,18 @@ import numpy as np
 import pandas as pd
 from factors_doc import FACTOR_DOCS
 from factor_utils import normalize_series
+from typing import Literal
 
-def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
+def _find_mcap_column(df: pd.DataFrame) -> str | None:
+    if df is None or df.empty:
+        return None
+    # try common variants case-insensitively
+    lower_map = {c.lower(): c for c in df.columns}
+    for cand in ["market_cap", "marketcap", "mktcap", "market cap", "mcap"]:
+        if cand in lower_map:
+            return lower_map[cand]
+    return None
+def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False,weighting: Literal["equal", "mcap"] = "equal"):
     # Apply sector restrictions if enabled
     if restrict_fossil_fuels:
         industry_col = 'FactSet Industry'
@@ -51,19 +61,56 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
         return Portfolio(name=f"Portfolio_{market.t}")
     
     sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
+    # ---------------------------
+    # CHANGED: Explicit, safe "top 10%" selection
+    # ---------------------------
+    k = max(1, len(sorted_securities) // 10)    # still top 10%
+    top = sorted_securities[:k]
+    selected_tickers = [t for t, _ in top]
 
-    # Select the top 10% of securities
-    top_10_percent = sorted_securities[:max(1, len(sorted_securities) // 10)]
-
-    # Calculate number of shares for each selected security
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
-    equal_investment = aum / len(top_10_percent)
 
-    for ticker, _ in top_10_percent:
-        price = market.get_price(ticker)
-        if price is not None and price > 0:
-            shares = equal_investment / price
+    # ---------------------------
+    # NEW: Market-cap weighting option
+    # ---------------------------
+    if weighting == "mcap":
+        mcap_col = _find_mcap_column(market.stocks)
+        if mcap_col is None:
+            raise KeyError(
+                "Market-cap weighting requested but no market cap column found. "
+                "Tried: market_cap, marketcap, mktcap, market cap, mcap (case-insensitive)."
+            )
+
+        mcap_series = (
+            pd.to_numeric(market.stocks.loc[selected_tickers, mcap_col], errors="coerce")
+            .reindex(selected_tickers)
+        )
+        mcap_series = mcap_series[(mcap_series > 0) & mcap_series.notna()]
+        if mcap_series.empty:
+            raise ValueError("Nonpositive or missing market caps for all selected tickers.")
+
+        total_mcap = mcap_series.sum()
+        weights = (mcap_series / total_mcap).to_dict()  # ticker -> cap-weight
+
+        for ticker in selected_tickers:
+            price = market.get_price(ticker)
+            if price is None or price <= 0:
+                continue
+            w = weights.get(ticker, 0.0)
+            invest_dollars = aum * w
+            if invest_dollars <= 0:
+                continue
+            shares = invest_dollars / price
             portfolio_new.add_investment(ticker, shares)
+
+    else:
+        # Original behavior: equal-dollar investment among selected (unchanged)
+        equal_investment = aum / len(selected_tickers)
+        for ticker in selected_tickers:
+            price = market.get_price(ticker)
+            if price is not None and price > 0:
+                shares = equal_investment / price
+                portfolio_new.add_investment(ticker, shares)
 
     return portfolio_new
 
@@ -219,3 +266,50 @@ def calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity=
     if verbosity >=1:
         print(f"Information Ratio: {information_ratio:.4f}")
     return information_ratio
+
+
+Weighting = Literal["equal", "mcap"]
+
+def compute_yearly_weights(
+    securities_df: pd.DataFrame,
+    *,
+    year_col: str = "year",
+    id_col: str = "ticker",
+    score_col: str = "score",
+    mcap_col: str = "market_cap",
+    top_percent: float = 10.0,
+    weighting: Weighting = "equal",
+) -> pd.DataFrame:
+    if not (0 < top_percent <= 100):
+        raise ValueError("top_percent must be in (0, 100].")
+    if weighting not in ("equal", "mcap"):
+        raise ValueError("weighting must be 'equal' or 'mcap'.")
+
+    out = []
+    for yr, g in securities_df.groupby(year_col, dropna=False):
+        if g.empty:
+            continue
+
+        g = g.sort_values(score_col, ascending=False).reset_index(drop=True)
+        k = max(1, int(len(g) * (top_percent / 100.0)))
+        selected = g.head(k).copy()
+
+        if weighting == "equal":
+            selected["weight"] = 1.0 / len(selected)
+        else:
+            if mcap_col not in selected.columns:
+                raise KeyError(
+                    f"market-cap weighting requested, but '{mcap_col}' not found for year {yr}"
+                )
+            selected = selected[selected[mcap_col] > 0].copy()
+            denom = selected[mcap_col].sum()
+            if denom <= 0:
+                raise ValueError(f"Nonpositive total market cap in year {yr}.")
+            selected["weight"] = selected[mcap_col] / denom
+
+        selected[year_col] = yr
+        out.append(selected[[year_col, id_col, "weight"]])
+
+    if not out:
+        return pd.DataFrame(columns=[year_col, id_col, "weight"])
+    return pd.concat(out, axis=0, ignore_index=True)

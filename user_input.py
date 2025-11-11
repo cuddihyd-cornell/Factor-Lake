@@ -1,4 +1,6 @@
 import factor_function
+# add near existing argparse setup
+import argparse
 
 def get_factors(available_factors):
     # Display the lists of available factors with index
@@ -71,3 +73,46 @@ def get_factors(available_factors):
     
     return factors
     
+
+def build_parser():
+    parser = argparse.ArgumentParser(description="Factor-Lake runner")
+    # (keep your existing args)
+
+    # NEW
+    parser.add_argument(
+        "--weighting",
+        choices=["equal", "mcap"],
+        default="equal",
+        help="Portfolio weighting scheme. 'equal' (default) or 'mcap' for market-cap weights."
+    )
+    parser.add_argument(
+        "--top-percent",
+        type=float,
+        default=10.0,
+        help="Top percent of names to select each year (default: 10)."
+    )
+    parser.add_argument(
+        "--restrict-fossil-fuels",
+        action="store_true",
+        help="Exclude fossil-fuel industries when building holdings."
+    )
+    parser.add_argument(
+        "--verbosity",
+        type=int,
+        default=0,
+        help="0=silent, 1=summary, 2=yearly logs, 3=debug"
+    )
+    return parser
+
+def get_user_options():
+    parser = build_parser()
+    args = parser.parse_args()
+
+    # Return a dict (or your existing config object)
+    return {
+        # include your existing fields here too
+        "weighting": args.weighting,
+        "top_percent": args.top_percent,
+        "restrict_fossil_fuels": args.restrict_fossil_fuels,
+        "verbosity": args.verbosity,
+    }
