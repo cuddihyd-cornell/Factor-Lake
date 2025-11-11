@@ -183,6 +183,8 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
 
     sharpe_portfolio = np.mean(excess_portfolio) / np.std(portfolio_np, ddof=1) if np.std(portfolio_np, ddof=1) else np.nan
     sharpe_benchmark = np.mean(excess_benchmark) / np.std(benchmark_np, ddof=1) if np.std(benchmark_np, ddof=1) else np.nan
+    for i, (y, p, b) in enumerate(zip(years[1:], portfolio_np, benchmark_np)):
+    print(f"{y}: Portfolio={p:.2%}, Benchmark={b:.2%}, Win={p > b}")
     win_rate = np.mean(portfolio_np > benchmark_np)
 
     if verbosity and verbosity >= 1:
