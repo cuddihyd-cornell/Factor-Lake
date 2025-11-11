@@ -16,97 +16,77 @@ def plot_top_bottom_percent(rdata,
                             benchmark_label='Russell 2000',
                             initial_investment=None,
                             require_all_factors=True,
-                            verbose=False):
+                            verbose=False,
+                            drop_missing_next_price=True):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
-    constructed from `factor` each year, alongside a benchmark.
+    constructed from a list of factors each year, alongside a benchmark.
 
-    Parameters:
-        rdata (pd.DataFrame): Full market data (must contain 'Year')
-        factors (list[Factors]): List of factor objects with .get(ticker, market)
-        years (list[int]): Ordered list of years to simulate (e.g. [2002,2003,...])
-        percent (int): Percent (1-100) used to select top/bottom N% (100 disables bottom)
-        show_bottom (bool): Whether to compute and plot bottom-N% portfolio
-        restrict_fossil_fuels (bool): If True, filter fossil industries before computing
-        benchmark_returns (list[float] | None): Optional benchmark returns (percent or decimal)
-        initial_investment (float | None): Starting dollars for the simulated portfolios.
-            If None, defaults to 1.0.
+    Notes:
+      - Ranks are normalized per-factor to [0..1] where 1 is most attractive. The
+        factor direction is read from `factors_doc.FACTOR_DOCS` via the factor's
+        `column_name` attribute (`higher_is_better`). If a factor has
+        `higher_is_better == False` it will be inverted so lower raw values are
+        treated as more attractive.
+      - `drop_missing_next_price` controls whether tickers missing next-year
+        prices are excluded from realized returns (recommended for clean tests).
     """
 
-    # Validate percent
     percent = int(percent)
     if percent < 1:
         percent = 1
     if percent > 100:
         percent = 100
 
-    # If percent == 100, bottom is not meaningful
     if percent == 100:
         show_bottom = False
 
     if initial_investment is None:
         initial_investment = 1.0
 
-    # (no CSV debug by default)
-
-    # Helper to compute top/bottom tickers for a given MarketObject
     def select_percent_tickers(market, pct, which='top'):
-        # Build per-factor rank dictionaries (rank normalized 0..1, higher is better)
         rank_dicts = []
         for factor in factors:
             values = {}
+            col = getattr(factor, 'column_name', str(factor))
             for ticker in market.stocks.index:
                 try:
                     v = factor.get(ticker, market)
-                    if v is None:
-                        continue
-                    if isinstance(v, (int, float)):
-                        values[ticker] = float(v)
+                except Exception:
+                    v = None
+                if v is None:
+                    continue
+                try:
+                    values[ticker] = float(v)
                 except Exception:
                     continue
             if not values:
                 continue
-            # compute ranks 0..1 where higher means more attractive
-            # Check factor direction from FACTOR_DOCS; default to True
-            col = getattr(factor, 'column_name', str(factor))
-            higher_is_better = True
-            try:
-                higher_is_better = FACTOR_DOCS.get(col, {}).get('higher_is_better', True)
-            except Exception:
-                higher_is_better = True
 
-            # Sort ascending to get order of values from low->high
-            items = sorted(values.items(), key=lambda x: x[1])
+            higher_is_better = FACTOR_DOCS.get(col, {}).get('higher_is_better', True)
+            items = sorted(values.items(), key=lambda x: x[1])  # low -> high
             n_items = len(items)
             ranks = {}
             if n_items == 1:
-                # single item -> neutral rank
                 ranks[items[0][0]] = 0.5
             else:
                 for idx, (t, _) in enumerate(items):
                     base_rank = idx / (n_items - 1)
-                    # base_rank: 0 for lowest value, 1 for highest value
-                    # If higher_is_better is True, keep as-is (higher value => higher rank)
-                    # If False (lower is better), invert so lower value => higher rank
                     ranks[t] = base_rank if higher_is_better else (1.0 - base_rank)
             rank_dicts.append(ranks)
 
         if not rank_dicts:
-            return []
+            return [], 0, 0
 
-        # Determine tickers to combine: either intersection (require values for all factors)
-        # or union (use any available). Intersection reduces one-factor-only artifacts.
         if require_all_factors:
             tickers_set = set(rank_dicts[0].keys())
             for d in rank_dicts[1:]:
                 tickers_set &= set(d.keys())
-            # If intersection is empty, fall back to union to avoid losing universe completely
             if not tickers_set:
                 tickers_set = set().union(*[set(d.keys()) for d in rank_dicts])
         else:
             tickers_set = set().union(*[set(d.keys()) for d in rank_dicts])
 
-        # combine ranks by averaging across available factor ranks per ticker
         combined = {}
         for t in tickers_set:
             vals = [d[t] for d in rank_dicts if t in d]
@@ -114,7 +94,7 @@ def plot_top_bottom_percent(rdata,
                 continue
             combined[t] = sum(vals) / len(vals)
 
-        sorted_items = sorted(combined.items(), key=lambda x: x[1], reverse=True)
+        sorted_items = sorted(combined.items(), key=lambda x: x[1], reverse=True)  # best->worst
         universe_size = len(sorted_items)
         n = max(1, math.floor(universe_size * (pct / 100.0)))
         if which == 'top':
@@ -122,11 +102,9 @@ def plot_top_bottom_percent(rdata,
         else:
             return [t for t, _ in sorted_items[-n:]], universe_size, n
 
-    # Prepare arrays
     top_values = [initial_investment]
     bottom_values = [initial_investment] if show_bottom else None
 
-    # Simulate year-to-year rebalanced portfolios
     for i in range(len(years) - 1):
         year = years[i]
         next_year = years[i + 1]
@@ -134,32 +112,36 @@ def plot_top_bottom_percent(rdata,
         market = MarketObject(rdata.loc[rdata['Year'] == year], year)
         next_market = MarketObject(rdata.loc[rdata['Year'] == next_year], next_year)
 
-        # Top
+        # Top cohort
         top_tickers, universe_size_top, n_top = select_percent_tickers(market, percent, 'top')
         start_top = 0.0
         end_top = 0.0
-        # Build equal-dollar positions at start using market prices
+        top_returns = []
         if top_tickers:
             equal = top_values[-1] / len(top_tickers)
             for t in top_tickers:
                 entry = market.get_price(t)
                 if entry is None or entry <= 0:
                     continue
-                shares = equal / entry
-                start_top += shares * entry
-                # Use next market price where available
                 exit_price = next_market.get_price(t)
                 if exit_price is None:
+                    if drop_missing_next_price:
+                        # skip this ticker entirely for realized return
+                        continue
                     exit_price = entry
+                shares = equal / entry
+                start_top += shares * entry
                 end_top += shares * exit_price
+                try:
+                    top_returns.append((exit_price / entry) - 1.0)
+                except Exception:
+                    top_returns.append(0.0)
         else:
-            # No tickers selected -- carry forward value
             end_top = top_values[-1]
 
         top_values.append(end_top)
 
-        # Bottom
-        # initialize bottom variables so verbose can reference them safely
+        # Bottom cohort
         universe_size_bot = None
         n_bot = 0
         bottom_tickers = []
@@ -168,36 +150,50 @@ def plot_top_bottom_percent(rdata,
             bottom_tickers, universe_size_bot, n_bot = select_percent_tickers(market, percent, 'bottom')
             start_bottom = 0.0
             end_bottom = 0.0
+            bottom_returns = []
             if bottom_tickers:
                 equal_b = bottom_values[-1] / len(bottom_tickers)
                 for t in bottom_tickers:
                     entry = market.get_price(t)
                     if entry is None or entry <= 0:
                         continue
-                    shares = equal_b / entry
-                    start_bottom += shares * entry
                     exit_price = next_market.get_price(t)
                     if exit_price is None:
+                        if drop_missing_next_price:
+                            continue
                         exit_price = entry
+                    shares = equal_b / entry
+                    start_bottom += shares * entry
                     end_bottom += shares * exit_price
+                    try:
+                        bottom_returns.append((exit_price / entry) - 1.0)
+                    except Exception:
+                        bottom_returns.append(0.0)
             else:
                 end_bottom = bottom_values[-1]
             bottom_values.append(end_bottom)
 
-        # (no CSV debug collection)
-        # Optional verbose diagnostics to help debug selection math
+        # Verbose diagnostics if requested
         if verbose:
             print(f"Year {year}: universe_size={universe_size_top}, top_n={n_top}")
             if show_bottom:
                 print(f"Year {year}: universe_size={universe_size_bot}, bottom_n={n_bot}")
-            # show a few sample tickers from each cohort (if any)
             if top_tickers:
                 print("  Top sample:", top_tickers[:10])
+                try:
+                    avg_top_r = sum(top_returns) / len(top_returns) if top_returns else 0.0
+                except Exception:
+                    avg_top_r = 0.0
+                print(f"  Top avg next-year return: {avg_top_r*100:.2f}% | start ${start_top:.2f} end ${end_top:.2f}")
             if show_bottom and bottom_tickers:
                 print("  Bottom sample:", bottom_tickers[:10])
+                try:
+                    avg_bot_r = sum(bottom_returns) / len(bottom_returns) if bottom_returns else 0.0
+                except Exception:
+                    avg_bot_r = 0.0
+                print(f"  Bottom avg next-year return: {avg_bot_r*100:.2f}% | start ${start_bottom:.2f} end ${end_bottom:.2f}")
 
-    # Years alignment: top_values and bottom_values now have length len(years)
-    # Compute benchmark dollar series if provided (same logic as portfolio_growth_plot)
+    # Build benchmark dollar series (same approach as other plotting code)
     benchmark_values = None
     if benchmark_returns is not None:
         def to_decimal(x):
@@ -217,7 +213,7 @@ def plot_top_bottom_percent(rdata,
             for r in br[:-1]:
                 benchmark_values.append(benchmark_values[-1] * (1 + to_decimal(r)))
 
-    # Plotting
+    # Plot
     plt.figure(figsize=(10, 6))
     plt.plot(years, top_values, marker='o', linestyle='-', color='g', label=f'Top {percent}%')
     if show_bottom and bottom_values is not None:
@@ -225,7 +221,6 @@ def plot_top_bottom_percent(rdata,
     if benchmark_values is not None and len(benchmark_values) == len(years):
         plt.plot(years, benchmark_values, marker='s', linestyle='--', color='r', label=benchmark_label)
 
-    # Build a readable factor-set name
     try:
         factor_set_name = ", ".join([str(f) for f in factors])
     except Exception:
@@ -237,6 +232,5 @@ def plot_top_bottom_percent(rdata,
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    # (no CSV debug output)
-
     plt.show()
+    # end of function
