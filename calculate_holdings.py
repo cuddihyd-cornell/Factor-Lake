@@ -11,7 +11,7 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
         if industry_col in market.stocks.columns:
             fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
             series = market.stocks[industry_col].astype(str).str.lower()
-            mask = series.apply(lambda x: not any(kw in x for kw in x.split() if kw in fossil_keywords) if pd.notna(x) else True)
+            mask = series.apply(lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
             try:
                 removed_tickers = list(market.stocks.loc[~mask].index)
                 if removed_tickers:
@@ -71,6 +71,29 @@ def calculate_growth(portfolio, next_market, current_market, verbosity=0):
     growth = (total_end_value - total_start_value) / total_start_value if total_start_value else 0
     return growth, total_start_value, total_end_value
 
+def get_benchmark_return(year):
+    benchmark_data = {
+        2002: 34.62, 2003: 17.48, 2004: 16.56, 2005: 8.65, 2006: 11.01,
+        2007: -15.63, 2008: -11.08, 2009: 11.89, 2010: -4.73, 2011: 30.01,
+        2012: 28.22, 2013: 2.6, 2014: -0.09, 2015: 13.71, 2016: 19.11,
+        2017: 13.8, 2018: -10.21, 2019: -1.03, 2020: 46.21, 2021: -24.48, 2022: 7.23
+    }
+    return benchmark_data.get(year, 0)
+
+def calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity=0):
+    verbosity = 0 if verbosity is None else verbosity
+    portfolio_returns = np.array(portfolio_returns)
+    benchmark_returns = np.array(benchmark_returns)
+    active_returns = portfolio_returns - benchmark_returns
+    mean_active_return = np.mean(active_returns)
+    tracking_error = np.std(active_returns, ddof=1)
+    if tracking_error == 0:
+        return None
+    information_ratio = mean_active_return / tracking_error
+    if verbosity >= 1:
+        print(f"Information Ratio: {information_ratio:.4f}")
+    return information_ratio
+
 def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=None, restrict_fossil_fuels=False):
     aum = initial_aum
     years = [start_year]
@@ -78,7 +101,7 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
     benchmark_returns = []
     portfolio_values = [aum]
 
-    risk_free_rate_source = 'SOFR'
+    risk_free_rate_source = 'SOFR (Oct 1)'
     risk_free_rate_lookup = {
         2002: 0.015, 2003: 0.014, 2004: 0.017, 2005: 0.025, 2006: 0.035,
         2007: 0.045, 2008: 0.02, 2009: 0.005, 2010: 0.007, 2011: 0.01,
@@ -108,7 +131,7 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
 
             aum = total_end_value
             portfolio_returns.append(growth)
-            benchmark_return = get_benchmark_return(year)
+            benchmark_return = get_benchmark_return(year) / 100
             benchmark_returns.append(benchmark_return)
             portfolio_values.append(aum)
 
@@ -122,56 +145,65 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         print(f"Overall Growth from {start_year} to {end_year}: {overall_growth * 100:.2f}%")
         print(f"\n==== Performance Metrics ====")
 
-    # === Basic Stats ===
-    portfolio_returns_np = np.array(portfolio_returns)
-    benchmark_returns_np = np.array(benchmark_returns) / 100
-    active_returns = portfolio_returns_np - benchmark_returns_np
+    portfolio_np = np.array(portfolio_returns)
+    benchmark_np = np.array(benchmark_returns)
+    active_returns = portfolio_np - benchmark_np
 
-    # Annualized Return
-    annualized_return_portfolio = (np.prod(1 + portfolio_returns_np))**(1 / len(portfolio_returns_np)) - 1
-    annualized_return_benchmark = (np.prod(1 + benchmark_returns_np))**(1 / len(benchmark_returns_np)) - 1
-
-    # Annualized Volatility
-    annualized_volatility_portfolio = np.std(portfolio_returns_np, ddof=1)
-    annualized_volatility_benchmark = np.std(benchmark_returns_np, ddof=1)
-
-    # Active Volatility
+    annualized_return_portfolio = (np.prod(1 + portfolio_np))**(1 / len(portfolio_np)) - 1
+    annualized_return_benchmark = (np.prod(1 + benchmark_np))**(1 / len(benchmark_np)) - 1
+    annualized_volatility_portfolio = np.std(portfolio_np, ddof=1)
+    annualized_volatility_benchmark = np.std(benchmark_np, ddof=1)
     active_volatility = np.std(active_returns, ddof=1)
 
     print(f"Annualized Return (Portfolio): {annualized_return_portfolio:.2%}")
     print(f"Annualized Return (Benchmark): {annualized_return_benchmark:.2%}")
     print(f"Annualized Volatility (Portfolio): {annualized_volatility_portfolio:.2%}")
     print(f"Annualized Volatility (Benchmark): {annualized_volatility_benchmark:.2%}")
-    print(f"Active Volatility (Portfolio vs Benchmark): {active_volatility:.2%}")
+        print(f"Active Volatility (Portfolio vs Benchmark): {active_volatility:.2%}")
 
-    information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
+    information_ratio = calculate_information_ratio(portfolio_returns, [r * 100 for r in benchmark_np], verbosity)
     if information_ratio is None:
         print("Information Ratio could not be calculated due to zero tracking error.")
 
     # === Advanced Stats ===
     rf_series = np.array([risk_free_rate_lookup.get(y, 0.01) for y in years[:-1]])
-    excess_returns = portfolio_returns_np - rf_series
-    benchmark_excess = benchmark_returns_np - rf_series
+    excess_portfolio = portfolio_np - rf_series
+    excess_benchmark = benchmark_np - rf_series
 
     peak_portfolio = np.maximum.accumulate(portfolio_values)
     drawdowns_portfolio = (np.array(portfolio_values) - peak_portfolio) / peak_portfolio
     max_drawdown_portfolio = drawdowns_portfolio.min()
 
     benchmark_cum = [initial_aum]
-    for r in benchmark_returns_np:
+    for r in benchmark_np:
         benchmark_cum.append(benchmark_cum[-1] * (1 + r))
     peak_benchmark = np.maximum.accumulate(benchmark_cum)
     drawdowns_benchmark = (np.array(benchmark_cum) - peak_benchmark) / peak_benchmark
     max_drawdown_benchmark = drawdowns_benchmark.min()
 
-    sharpe_portfolio = np.mean(excess_returns) / np.std(portfolio_returns_np, ddof=1) if np.std(portfolio_returns_np, ddof=1) else np.nan
-    sharpe_benchmark = np.mean(benchmark_excess) / np.std(benchmark_returns_np, ddof=1) if np.std(benchmark_returns_np, ddof=1) else np.nan
-    win_rate = np.mean(portfolio_returns_np > benchmark_returns_np)
+    sharpe_portfolio = np.mean(excess_portfolio) / np.std(portfolio_np, ddof=1) if np.std(portfolio_np, ddof=1) else np.nan
+    sharpe_benchmark = np.mean(excess_benchmark) / np.std(benchmark_np, ddof=1) if np.std(benchmark_np, ddof=1) else np.nan
+    win_rate = np.mean(portfolio_np > benchmark_np)
 
-    print("\n==== Advanced Backtest Stats ====")
-    print(f"Risk-Free Rate Source: {risk_free_rate_source}")
-    print(f"Max Drawdown (Portfolio): {max_drawdown_portfolio:.2%}")
-    print(f"Max Drawdown (Benchmark): {max_drawdown_benchmark:.2%}")
-    print(f"Sharpe Ratio (Portfolio): {sharpe_portfolio:.4f}")
-    print(f"Sharpe Ratio (Benchmark): {sharpe_benchmark:.4f}")
-    print(f"Yearly Win Rate vs Benchmark: {win_rate:.2%}")
+    if verbosity and verbosity >= 1:
+        print("\n==== Advanced Backtest Stats ====")
+        print(f"Risk-Free Rate Source: {risk_free_rate_source}")
+        print(f"Max Drawdown (Portfolio): {max_drawdown_portfolio:.2%}")
+        print(f"Max Drawdown (Benchmark): {max_drawdown_benchmark:.2%}")
+        print(f"Sharpe Ratio (Portfolio): {sharpe_portfolio:.4f}")
+        print(f"Sharpe Ratio (Benchmark): {sharpe_benchmark:.4f}")
+        print(f"Yearly Win Rate vs Benchmark: {win_rate:.2%}")
+
+    return {
+        'final_value': aum,
+        'yearly_returns': portfolio_returns,
+        'benchmark_returns': [r * 100 for r in benchmark_np],
+        'years': years,
+        'portfolio_values': portfolio_values,
+        'max_drawdown_portfolio': max_drawdown_portfolio,
+        'max_drawdown_benchmark': max_drawdown_benchmark,
+        'sharpe_portfolio': sharpe_portfolio,
+        'sharpe_benchmark': sharpe_benchmark,
+        'win_rate': win_rate,
+        'risk_free_rate_source': risk_free_rate_source
+    }
