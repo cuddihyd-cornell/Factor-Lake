@@ -21,7 +21,7 @@ def plot_top_bottom_percent(rdata,
                             initial_investment=None,
                             require_all_factors=True,
                             verbose=False,
-                            drop_missing_next_price=False,
+                            drop_missing_next_price=True,
                             selection_mode='combined'):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
