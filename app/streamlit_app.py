@@ -16,8 +16,21 @@ if env_path.exists():
                 key, value = line.split('=', 1)
                 os.environ[key] = value
 
-# Add src directory to path (one level up from app/)
-sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+# Add src directory to path by searching parent directories until a `src` folder
+# is found. This makes the app runnable from different working directories
+def _ensure_src_on_path():
+    p = Path(__file__).resolve().parent
+    # Look up to 6 parent levels for a sibling 'src' directory
+    for _ in range(6):
+        candidate = p / 'src'
+        if candidate.is_dir():
+            sys.path.insert(0, str(p))
+            return
+        p = p.parent
+    # Fallback: use the original one-level-up heuristic
+    sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+
+_ensure_src_on_path()
 
 import streamlit as st
 import pandas as pd
