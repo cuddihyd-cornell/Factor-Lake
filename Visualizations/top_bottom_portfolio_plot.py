@@ -21,20 +21,28 @@ def plot_top_bottom_percent(rdata,
                             initial_investment=None,
                             require_all_factors=True,
                             verbose=False,
-                            drop_missing_next_price=False,
-                            selection_mode='combined'):
+                            drop_missing_next_price=True,
+                            selection_mode='by_factor'):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from a list of factors each year, alongside a benchmark.
 
-    Notes:
-      - Ranks are normalized per-factor to [0..1] where 1 is most attractive. The
-        factor direction is read from `factors_doc.FACTOR_DOCS` via the factor's
-        `column_name` attribute (`higher_is_better`). If a factor has
-        `higher_is_better == False` it will be inverted so lower raw values are
-        treated as more attractive.
-      - `drop_missing_next_price` controls whether tickers missing next-year
-        prices are excluded from realized returns (recommended for clean tests).
+        Notes:
+            - Ranks are normalized per-factor to [0..1] where 1 is most attractive.
+                The factor direction is read from `factors_doc.FACTOR_DOCS` via the
+                factor's `column_name` attribute (`higher_is_better`). If a factor has
+                `higher_is_better == False` it will be inverted so lower raw values are
+                treated as more attractive.
+            - Defaults are chosen to be deterministic and robust: `selection_mode`
+                defaults to 'by_factor' (this mirrors `calculate_holdings`' equal-
+                allocation-across-factors behavior) and `drop_missing_next_price`
+                defaults to True to avoid zero-return substitution bias caused by
+                carrying forward entry prices for missing exits.
+            - When `drop_missing_next_price=True` tickers without a next-year price
+                are excluded from that year's realized returns. The allocation logic
+                below will reallocate the factor's dollars equally among the remaining
+                valid tickers so the portfolio is always fully invested (subject to
+                available valid tickers).
     """
 
     percent = int(percent)
@@ -48,6 +56,9 @@ def plot_top_bottom_percent(rdata,
 
     if initial_investment is None:
         initial_investment = 1.0
+
+    # thresholds for helpful runtime warnings (small cohorts)
+    MIN_COHORT_WARNING = 3
 
     def select_percent_tickers(market, pct, which='top'):
         rank_dicts = []
@@ -69,7 +80,8 @@ def plot_top_bottom_percent(rdata,
                 continue
 
             higher_is_better = FACTOR_DOCS.get(col, {}).get('higher_is_better', True)
-            items = sorted(values.items(), key=lambda x: x[1])  # low -> high
+            # stable sort: by value then ticker so results are deterministic
+            items = sorted(values.items(), key=lambda x: (x[1], x[0]))  # low -> high
             n_items = len(items)
             ranks = {}
             if n_items == 1:
@@ -99,7 +111,8 @@ def plot_top_bottom_percent(rdata,
                 continue
             combined[t] = sum(vals) / len(vals)
 
-        sorted_items = sorted(combined.items(), key=lambda x: x[1], reverse=True)  # best->worst
+        # stable sort by score then ticker to make selection deterministic
+        sorted_items = sorted(combined.items(), key=lambda x: (x[1], x[0]), reverse=True)  # best->worst
         universe_size = len(sorted_items)
         n = max(1, math.floor(universe_size * (pct / 100.0)))
         if which == 'top':
@@ -129,7 +142,8 @@ def plot_top_bottom_percent(rdata,
         if selection_mode == 'combined':
             top_tickers, universe_size_top, n_top = select_percent_tickers(market, percent, 'top')
             if top_tickers:
-                equal = top_values[-1] / len(top_tickers)
+                # pre-filter valid tickers so the allocation is fully invested
+                valid = []
                 for t in top_tickers:
                     entry = market.get_price(t)
                     if entry is None or entry <= 0:
@@ -137,18 +151,22 @@ def plot_top_bottom_percent(rdata,
                     exit_price = next_market.get_price(t)
                     if exit_price is None:
                         if drop_missing_next_price:
-                            top_dropped += 1
                             continue
                         exit_price = entry
-                    shares = equal / entry
-                    start_top += shares * entry
-                    end_top += shares * exit_price
-                    try:
-                        top_returns.append((exit_price / entry) - 1.0)
-                    except Exception:
-                        top_returns.append(0.0)
-            else:
-                end_top = top_values[-1]
+                    valid.append((t, entry, exit_price))
+                top_dropped += (len(top_tickers) - len(valid))
+                if valid:
+                    equal = top_values[-1] / len(valid)
+                    for t, entry, exit_price in valid:
+                        shares = equal / entry
+                        start_top += shares * entry
+                        end_top += shares * exit_price
+                        try:
+                            top_returns.append((exit_price / entry) - 1.0)
+                        except Exception:
+                            top_returns.append(0.0)
+                else:
+                    end_top = top_values[-1]
         elif selection_mode == 'by_factor':
             # Match calculate_holdings: equal allocation to each factor, then equal-dollar across that factor's top-N
             n_factors = max(1, len(factors))
@@ -184,7 +202,8 @@ def plot_top_bottom_percent(rdata,
                 # keep an aggregated list for verbose diagnostics
                 top_tickers.extend(top_list)
                 if top_list:
-                    equal = per_factor_alloc / len(top_list)
+                    # pre-filter valid tickers so per-factor allocation is fully invested
+                    valid = []
                     for t in top_list:
                         entry = market.get_price(t)
                         if entry is None or entry <= 0:
@@ -192,16 +211,20 @@ def plot_top_bottom_percent(rdata,
                         exit_price = next_market.get_price(t)
                         if exit_price is None:
                             if drop_missing_next_price:
-                                top_dropped += 1
                                 continue
                             exit_price = entry
-                        shares = equal / entry
-                        start_top += shares * entry
-                        end_top += shares * exit_price
-                        try:
-                            top_returns.append((exit_price / entry) - 1.0)
-                        except Exception:
-                            top_returns.append(0.0)
+                        valid.append((t, entry, exit_price))
+                    top_dropped += (len(top_list) - len(valid))
+                    if valid:
+                        equal = per_factor_alloc / len(valid)
+                        for t, entry, exit_price in valid:
+                            shares = equal / entry
+                            start_top += shares * entry
+                            end_top += shares * exit_price
+                            try:
+                                top_returns.append((exit_price / entry) - 1.0)
+                            except Exception:
+                                top_returns.append(0.0)
             # fallback if nothing selected
             if end_top == 0:
                 end_top = top_values[-1]
@@ -224,7 +247,8 @@ def plot_top_bottom_percent(rdata,
             if selection_mode == 'combined':
                 bottom_tickers, universe_size_bot, n_bot = select_percent_tickers(market, percent, 'bottom')
                 if bottom_tickers:
-                    equal_b = bottom_values[-1] / len(bottom_tickers)
+                    # pre-filter valid tickers so allocation is fully invested
+                    valid = []
                     for t in bottom_tickers:
                         entry = market.get_price(t)
                         if entry is None or entry <= 0:
@@ -232,16 +256,22 @@ def plot_top_bottom_percent(rdata,
                         exit_price = next_market.get_price(t)
                         if exit_price is None:
                             if drop_missing_next_price:
-                                bot_dropped += 1
                                 continue
                             exit_price = entry
-                        shares = equal_b / entry
-                        start_bottom += shares * entry
-                        end_bottom += shares * exit_price
-                        try:
-                            bottom_returns.append((exit_price / entry) - 1.0)
-                        except Exception:
-                            bottom_returns.append(0.0)
+                        valid.append((t, entry, exit_price))
+                    bot_dropped += (len(bottom_tickers) - len(valid))
+                    if valid:
+                        equal_b = bottom_values[-1] / len(valid)
+                        for t, entry, exit_price in valid:
+                            shares = equal_b / entry
+                            start_bottom += shares * entry
+                            end_bottom += shares * exit_price
+                            try:
+                                bottom_returns.append((exit_price / entry) - 1.0)
+                            except Exception:
+                                bottom_returns.append(0.0)
+                    else:
+                        end_bottom = bottom_values[-1]
                 else:
                     end_bottom = bottom_values[-1]
             elif selection_mode == 'by_factor':
@@ -269,7 +299,8 @@ def plot_top_bottom_percent(rdata,
                                 items.append((t, float(v)))
                             except Exception:
                                 continue
-                    items = sorted(items, key=lambda x: x[1])  # worst->best
+                    # stable sort: worst->best with deterministic tie-breaker
+                    items = sorted(items, key=lambda x: (x[1], x[0]))  # worst->best
                     universe_size_bot += len(items)
                     n = max(1, math.floor(len(items) * (percent / 100.0))) if items else 0
                     n_bot += n
@@ -277,7 +308,8 @@ def plot_top_bottom_percent(rdata,
                     # collect tickers for verbose diagnostics
                     bottom_tickers.extend(bot_list)
                     if bot_list:
-                        equal = per_factor_alloc_b / len(bot_list)
+                        # pre-filter valid tickers so per-factor allocation is fully invested
+                        valid = []
                         for t in bot_list:
                             entry = market.get_price(t)
                             if entry is None or entry <= 0:
@@ -285,41 +317,62 @@ def plot_top_bottom_percent(rdata,
                             exit_price = next_market.get_price(t)
                             if exit_price is None:
                                 if drop_missing_next_price:
-                                    bot_dropped += 1
                                     continue
                                 exit_price = entry
-                            shares = equal / entry
-                            start_bottom += shares * entry
-                            end_bottom += shares * exit_price
-                            try:
-                                bottom_returns.append((exit_price / entry) - 1.0)
-                            except Exception:
-                                bottom_returns.append(0.0)
+                            valid.append((t, entry, exit_price))
+                        bot_dropped += (len(bot_list) - len(valid))
+                        if valid:
+                            equal = per_factor_alloc_b / len(valid)
+                            for t, entry, exit_price in valid:
+                                shares = equal / entry
+                                start_bottom += shares * entry
+                                end_bottom += shares * exit_price
+                                try:
+                                    bottom_returns.append((exit_price / entry) - 1.0)
+                                except Exception:
+                                    bottom_returns.append(0.0)
                 if end_bottom == 0:
                     end_bottom = bottom_values[-1]
             else:
                 raise ValueError(f"Unknown selection_mode: {selection_mode}")
             bottom_values.append(end_bottom)
 
-        # Verbose diagnostics if requested
+        # Verbose diagnostics if requested + some deterministic warnings (small cohorts / dropped tickers)
         if verbose:
             print(f"Year {year}: universe_size={universe_size_top}, top_n={n_top}")
-            if show_bottom:
-                print(f"Year {year}: universe_size={universe_size_bot}, bottom_n={n_bot}")
-            if top_tickers:
+        else:
+            # still print small-cohort warnings even when not verbose
+            pass
+
+        if show_bottom and verbose:
+            print(f"Year {year}: universe_size={universe_size_bot}, bottom_n={n_bot}")
+
+        if top_tickers:
+            if verbose:
                 print("  Top sample:", top_tickers[:10])
-                try:
-                    avg_top_r = sum(top_returns) / len(top_returns) if top_returns else 0.0
-                except Exception:
-                    avg_top_r = 0.0
-                print(f"  Top avg next-year return: {avg_top_r*100:.2f}% | start ${start_top:.2f} end ${end_top:.2f}")
-            if show_bottom and bottom_tickers:
+            try:
+                avg_top_r = sum(top_returns) / len(top_returns) if top_returns else 0.0
+            except Exception:
+                avg_top_r = 0.0
+            print(f"  Top avg next-year return: {avg_top_r*100:.2f}% | start ${start_top:.2f} end ${end_top:.2f}")
+            # report how many tickers were dropped due to missing prices (helpful diagnostic)
+            if top_dropped:
+                print(f"  Top dropped tickers this year (missing prices): {top_dropped}")
+            if n_top and n_top < MIN_COHORT_WARNING:
+                print(f"  Warning: Top cohort size is small ({n_top}); results will be noisy.")
+
+        if show_bottom and bottom_tickers:
+            if verbose:
                 print("  Bottom sample:", bottom_tickers[:10])
-                try:
-                    avg_bot_r = sum(bottom_returns) / len(bottom_returns) if bottom_returns else 0.0
-                except Exception:
-                    avg_bot_r = 0.0
-                print(f"  Bottom avg next-year return: {avg_bot_r*100:.2f}% | start ${start_bottom:.2f} end ${end_bottom:.2f}")
+            try:
+                avg_bot_r = sum(bottom_returns) / len(bottom_returns) if bottom_returns else 0.0
+            except Exception:
+                avg_bot_r = 0.0
+            print(f"  Bottom avg next-year return: {avg_bot_r*100:.2f}% | start ${start_bottom:.2f} end ${end_bottom:.2f}")
+            if bot_dropped:
+                print(f"  Bottom dropped tickers this year (missing prices): {bot_dropped}")
+            if n_bot and n_bot < MIN_COHORT_WARNING:
+                print(f"  Warning: Bottom cohort size is small ({n_bot}); results will be noisy.")
 
     # Build benchmark dollar series (same approach as other plotting code)
     benchmark_values = None
