@@ -1,6 +1,7 @@
 from market_object import load_data
 from calculate_holdings import rebalance_portfolio
 from user_input import get_factors
+from user_input import get_user_options
 from verbosity_options import get_verbosity_level
 from fossil_fuel_restriction import get_fossil_fuel_restriction
 from supabase_input import get_supabase_preference, get_data_loading_verbosity
@@ -10,6 +11,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 def main():
+    opts = get_user_options()
+    weighting   = opts["weighting"]        # 'equal' or 'mcap'
+    top_percent = opts["top_percent"]      # float, default 10.0
+
     ### Ask about fossil fuel restriction first ###
     restrict_fossil_fuels = get_fossil_fuel_restriction()  # Prompt user (Yes/No)
 
@@ -29,7 +34,7 @@ def main():
         show_loading_progress=show_loading,
         sectors=selected_sectors
     )
-
+    
     ### Data preprocessing ###
     # Note: Fossil fuel filtering is applied later in calculate_holdings() for each year
     rdata['Ticker'] = rdata['Ticker-Region'].dropna().apply(lambda x: x.split('-')[0].strip())
@@ -70,7 +75,9 @@ def main():
         start_year=2002, end_year=2023,
         initial_aum=1,
         verbosity=verbosity_level,
-        restrict_fossil_fuels=restrict_fossil_fuels
+        restrict_fossil_fuels=restrict_fossil_fuels,
+        weighting=weighting,                # NEW
+        top_percent=top_percent,            # NEW
     )
     
     # Plot portfolio growth
