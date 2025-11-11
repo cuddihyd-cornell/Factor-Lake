@@ -2,6 +2,9 @@ import matplotlib.pyplot as plt
 from market_object import MarketObject
 import math
 
+# Respect per-factor direction (higher_is_better) from the docs
+from factors_doc import FACTOR_DOCS
+
 
 def plot_top_bottom_percent(rdata,
                             factors,
@@ -12,7 +15,8 @@ def plot_top_bottom_percent(rdata,
                             benchmark_returns=None,
                             benchmark_label='Russell 2000',
                             initial_investment=None,
-                            require_all_factors=True):
+                            require_all_factors=True,
+                            verbose=False):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from `factor` each year, alongside a benchmark.
@@ -62,12 +66,29 @@ def plot_top_bottom_percent(rdata,
                     continue
             if not values:
                 continue
-            # compute ranks 0..1 ascending -> lower value rank 0, highest rank 1
+            # compute ranks 0..1 where higher means more attractive
+            # Check factor direction from FACTOR_DOCS; default to True
+            col = getattr(factor, 'column_name', str(factor))
+            higher_is_better = True
+            try:
+                higher_is_better = FACTOR_DOCS.get(col, {}).get('higher_is_better', True)
+            except Exception:
+                higher_is_better = True
+
+            # Sort ascending to get order of values from low->high
             items = sorted(values.items(), key=lambda x: x[1])
             n_items = len(items)
             ranks = {}
-            for idx, (t, _) in enumerate(items):
-                ranks[t] = idx / (n_items - 1) if n_items > 1 else 0.5
+            if n_items == 1:
+                # single item -> neutral rank
+                ranks[items[0][0]] = 0.5
+            else:
+                for idx, (t, _) in enumerate(items):
+                    base_rank = idx / (n_items - 1)
+                    # base_rank: 0 for lowest value, 1 for highest value
+                    # If higher_is_better is True, keep as-is (higher value => higher rank)
+                    # If False (lower is better), invert so lower value => higher rank
+                    ranks[t] = base_rank if higher_is_better else (1.0 - base_rank)
             rank_dicts.append(ranks)
 
         if not rank_dicts:
@@ -138,7 +159,12 @@ def plot_top_bottom_percent(rdata,
         top_values.append(end_top)
 
         # Bottom
+        # initialize bottom variables so verbose can reference them safely
+        universe_size_bot = None
+        n_bot = 0
+        bottom_tickers = []
         if show_bottom:
+            assert bottom_values is not None
             bottom_tickers, universe_size_bot, n_bot = select_percent_tickers(market, percent, 'bottom')
             start_bottom = 0.0
             end_bottom = 0.0
@@ -159,6 +185,16 @@ def plot_top_bottom_percent(rdata,
             bottom_values.append(end_bottom)
 
         # (no CSV debug collection)
+        # Optional verbose diagnostics to help debug selection math
+        if verbose:
+            print(f"Year {year}: universe_size={universe_size_top}, top_n={n_top}")
+            if show_bottom:
+                print(f"Year {year}: universe_size={universe_size_bot}, bottom_n={n_bot}")
+            # show a few sample tickers from each cohort (if any)
+            if top_tickers:
+                print("  Top sample:", top_tickers[:10])
+            if show_bottom and bottom_tickers:
+                print("  Bottom sample:", bottom_tickers[:10])
 
     # Years alignment: top_values and bottom_values now have length len(years)
     # Compute benchmark dollar series if provided (same logic as portfolio_growth_plot)
