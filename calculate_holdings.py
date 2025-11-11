@@ -161,7 +161,7 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
     print(f"Annualized Volatility (Benchmark): {annualized_volatility_benchmark:.2%}")
     print(f"Active Volatility (Portfolio vs Benchmark): {active_volatility:.2%}")
 
-    information_ratio = calculate_information_ratio(portfolio_returns, [r * 100 for r in benchmark_np], verbosity)
+    information_ratio = calculate_information_ratio(portfolio_returns, benchmark_np, verbosity)
     if information_ratio is None:
         print("Information Ratio could not be calculated due to zero tracking error.")
 
