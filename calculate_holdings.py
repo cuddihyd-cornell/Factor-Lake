@@ -4,9 +4,25 @@ import numpy as np
 import pandas as pd
 from factors_doc import FACTOR_DOCS
 from factor_utils import normalize_series
+from typing import Literal
 
-def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
-    # Apply sector restrictions if enabled
+# NEW: detect a market-cap column by common names
+def _find_mcap_column(df: pd.DataFrame) -> str | None:
+    if df is None or df.empty:
+        return None
+    lower_map = {c.lower(): c for c in df.columns}
+    for cand in ["market_cap", "marketcap", "mktcap", "market cap", "mcap"]:
+        if cand in lower_map:
+            return lower_map[cand]
+    return None
+
+Weighting = Literal["equal", "mcap"]
+
+# CHANGED: add weighting + top_percent + echo_top for printing the Top-10% selection
+def calculate_holdings(factor, aum, market, restrict_fossil_fuels: bool = False,
+                       weighting: Weighting = "equal", top_percent: float = 10.0, echo_top: bool = False,                  
+):
+     # Apply sector restrictions if enabled
     if restrict_fossil_fuels:
         industry_col = 'FactSet Industry'
         if industry_col in market.stocks.columns:
@@ -14,11 +30,11 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
             series = market.stocks[industry_col].astype(str).str.lower()
             mask = series.apply(
                 lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
-            # Report which tickers are being removed in this step
             try:
                 removed_tickers = list(market.stocks.loc[~mask].index)
                 if removed_tickers:
-                    print(f"Fossil filter (holdings) removed {len(removed_tickers)} tickers: {', '.join(removed_tickers[:25])}{' ...' if len(removed_tickers) > 25 else ''}")
+                    print(f"Fossil filter (holdings) removed {len(removed_tickers)} tickers: "
+                          f"{', '.join(removed_tickers[:25])}{' ...' if len(removed_tickers) > 25 else ''}")
             except Exception:
                 pass
             market.stocks = market.stocks[mask].copy()
@@ -26,7 +42,6 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     # Get eligible stocks for factor calculation
     # Prefer vectorized series from market.stocks when available so we can normalize
     factor_col = getattr(factor, 'column_name', str(factor))
-    factor_values = {}
 
     if factor_col in market.stocks.columns:
         raw_series = pd.to_numeric(market.stocks[factor_col], errors='coerce')
@@ -49,31 +64,74 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     if len(factor_values) == 0:
         # Return empty portfolio instead of crashing
         return Portfolio(name=f"Portfolio_{market.t}")
-    
+
     sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
-
+    
     # Select the top 10% of securities
-    top_10_percent = sorted_securities[:max(1, len(sorted_securities) // 10)]
+    k = max(1, int(len(sorted_securities) * (top_percent / 100.0)))   
+    top = sorted_securities[:k]
+    selected_tickers = [t for t, _ in top]
 
-    # Calculate number of shares for each selected security
+    # compute display weights (for printing) and allocate shares
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
-    equal_investment = aum / len(top_10_percent)
 
-    for ticker, _ in top_10_percent:
-        price = market.get_price(ticker)
-        if price is not None and price > 0:
-            shares = equal_investment / price
+    if weighting == "mcap":
+        mcap_col = _find_mcap_column(market.stocks)
+        if mcap_col is None:
+            raise KeyError("Market-cap weighting requested but no market-cap column found.")
+        mcap_series = (
+            pd.to_numeric(market.stocks.loc[selected_tickers, mcap_col], errors="coerce")
+            .reindex(selected_tickers)
+        )
+        mcap_series = mcap_series[(mcap_series > 0) & mcap_series.notna()]
+        if mcap_series.empty:
+            raise ValueError("Nonpositive or missing market caps for all selected tickers.")
+        total_mcap = mcap_series.sum()
+        disp_weights = (mcap_series / total_mcap)           # NEW: for printing
+        # allocate by cap weights
+        for ticker in selected_tickers:
+            price = market.get_price(ticker)
+            if price is None or price <= 0:
+                continue
+            invest_dollars = aum * float(disp_weights.get(ticker, 0.0))
+            if invest_dollars <= 0:
+                continue
+            shares = invest_dollars / price
             portfolio_new.add_investment(ticker, shares)
+    else:
+        # equal-weight dollars among selected
+        equal_investment = aum / len(selected_tickers)
+        disp_weights = pd.Series(1.0 / len(selected_tickers), index=selected_tickers)  # NEW: for printing
+        for ticker in selected_tickers:
+            price = market.get_price(ticker)
+            if price is not None and price > 0:
+                shares = equal_investment / price
+                portfolio_new.add_investment(ticker, shares)
+
+    # NEW: print Top-10% selection (or Top-{top_percent}% if you change it) and weights
+    if echo_top:
+        pct = int(top_percent)
+        print(f"\nYear {market.t} — Top {pct}% selection ({len(selected_tickers)} names), weighting={weighting}")
+        # nice compact table
+        to_show = pd.DataFrame({
+            "ticker": selected_tickers,
+            "weight": [float(disp_weights.get(t, 0.0)) for t in selected_tickers],
+        })
+        # ensure weights sum ~1 in print
+        print(to_show.to_string(index=False, formatters={"weight": "{:.6f}".format}))
+        print(f"Sum of weights: {to_show['weight'].sum():.6f}")
 
     return portfolio_new
+
+# (the rest of your file: calculate_growth, rebalance_portfolio, etc.)
 
 def calculate_growth(portfolio, next_market, current_market, verbosity=0):
     # Calculate start value using the current market
     total_start_value = 0
     for factor_portfolio in portfolio:
         total_start_value += factor_portfolio.present_value(current_market)
-
-    # Calculate end value using next market, handling missing stocks
+        
+# Calculate end value using next market, handling missing stocks
     total_end_value = 0
     for factor_portfolio in portfolio:
         for inv in factor_portfolio.investments:
@@ -92,8 +150,18 @@ def calculate_growth(portfolio, next_market, current_market, verbosity=0):
     growth = (total_end_value - total_start_value) / total_start_value if total_start_value else 0
     return growth, total_start_value, total_end_value
 
-
-def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=None, restrict_fossil_fuels=False):
+# CHANGED: thread weighting/top_percent + echo_top from the driver
+def rebalance_portfolio(
+    data,
+    factors,
+    start_year,
+    end_year,
+    initial_aum,
+    verbosity=None,
+    restrict_fossil_fuels=False,
+    weighting: Weighting = "equal",        # NEW
+    top_percent: float = 10.0,             # NEW
+):
     aum = initial_aum
     years = [start_year] # Start with the initial year
     portfolio_returns = []  # Store yearly returns for Information Ratio
@@ -101,7 +169,6 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
     portfolio_values = [aum]  # track total AUM over time
 
     for year in range(start_year, end_year):
-
         market = MarketObject(data.loc[data['Year'] == year], year)
         yearly_portfolio = []
 
@@ -110,7 +177,10 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
                 factor=factor,
                 aum=aum / len(factors),
                 market=market,
-                restrict_fossil_fuels=restrict_fossil_fuels
+                restrict_fossil_fuels=restrict_fossil_fuels,
+                weighting=weighting,              # NEW
+                top_percent=top_percent,          # NEW
+                echo_top=(verbosity or 0) >= 1,   # NEW: print the Top-% table
             )
             yearly_portfolio.append(factor_portfolio)
 
@@ -128,24 +198,22 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
             portfolio_returns.append(growth)
 
             # Get benchmark return for the year (replace it as needed)
-            benchmark_return = get_benchmark_return(year)  # Define this function based on benchmark data
-            benchmark_returns.append(benchmark_return)
+            benchmark_return = get_benchmark_return(year)
+            benchmark_returns.append(benchmark_return)  # Define this function based on benchmark data
+
             portfolio_values.append(aum)  # add current AUM to the list
 
         years.append(year+1) #adding next year to match portfolio_values
 
-    
     if verbosity is not None and verbosity >= 1:
-
         print("\n==== Final Summary ====")
         print(f"Initial Portfolio Value: ${initial_aum:.2f}")
         # Calculate overall growth
         overall_growth = (aum - initial_aum) / initial_aum if initial_aum else 0
         print(f"Final Portfolio Value after {end_year}: ${aum:.2f}")
         print(f"Overall Growth from {start_year} to {end_year}: {overall_growth * 100:.2f}%")
-        print(f"\n==== Performance Metrics ====")
+        print("\n==== Performance Metrics ====")
 
-#backtest stats 
     portfolio_returns_np = np.array(portfolio_returns)
     benchmark_returns_np = np.array(benchmark_returns) / 100
     active_returns = portfolio_returns_np - benchmark_returns_np
@@ -158,12 +226,11 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
     print(f"Annualized Volatility (Portfolio): {annualized_volatility:.2%}")
     print(f"Active Volatility (Portfolio vs Benchmark): {active_volatility:.2%}")
 
-  
     # Calculate Information Ratio
     information_ratio = calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity)
     if information_ratio is None:
         print("Information Ratio could not be calculated due to zero tracking error.")
-        
+
     return {
         'final_value': aum,
         'yearly_returns': portfolio_returns,
@@ -171,7 +238,7 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         'years': years,
         'portfolio_values': portfolio_values
     }
-    
+
 def get_benchmark_return(year):
     """
     This function should return the benchmark return for the given year.
@@ -200,16 +267,16 @@ def calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity=
     verbosity = 0 if verbosity is None else verbosity
     portfolio_returns = np.array(portfolio_returns)
     benchmark_returns = np.array(benchmark_returns)
-
+    
     # Calculate active returns
     active_returns = portfolio_returns - benchmark_returns
-    
+
     # Calculate the mean active return (numerator)
     mean_active_return = np.mean(active_returns)
-    
-    # Calculate tracking error (denominator)
-    tracking_error = np.std(active_returns, ddof=1)  # Use sample std deviation
 
+   # Calculate tracking error (denominator)
+    tracking_error = np.std(active_returns, ddof=1)  # Use sample std deviation
+ 
     # Prevent division by zero
     if tracking_error == 0:
         return None  # Or return float('nan') to indicate undefined IR
@@ -219,3 +286,4 @@ def calculate_information_ratio(portfolio_returns, benchmark_returns, verbosity=
     if verbosity >=1:
         print(f"Information Ratio: {information_ratio:.4f}")
     return information_ratio
+
