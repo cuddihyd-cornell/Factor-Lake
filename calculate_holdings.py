@@ -100,14 +100,14 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
     portfolio_returns = []
     benchmark_returns = []
     portfolio_values = [aum]
-    
-#Estimated Placeholders
-    risk_free_rate_source = 'SOFR (Oct 1)'
+
+    #risk free rate 
+    risk_free_rate_source = 'FRED (Oct 1)'
     risk_free_rate_lookup = {
-        2002: 0.015, 2003: 0.014, 2004: 0.017, 2005: 0.025, 2006: 0.035,
-        2007: 0.045, 2008: 0.02, 2009: 0.005, 2010: 0.007, 2011: 0.01,
-        2012: 0.012, 2013: 0.013, 2014: 0.015, 2015: 0.017, 2016: 0.018,
-        2017: 0.02, 2018: 0.022, 2019: 0.018, 2020: 0.005, 2021: 0.01, 2022: 0.03
+        2002: 0.0165, 2003: 0.0125, 2004: 0.0223, 2005: 0.0418, 2006: 0.0501,
+        2007: 0.041, 2008: 0.0142, 2009: 0.0037, 2010: 0.0029, 2011: 0.0011,
+        2012: 0.0018, 2013: 0.0012, 2014: 0.001, 2015: 0.0026, 2016: 0.0066,
+        2017: 0.014, 2018: 0.0265, 2019: 0.0161, 2020: 0.0013, 2021: 0.0011, 2022: 0.0443
     }
 
     for year in range(start_year, end_year):
