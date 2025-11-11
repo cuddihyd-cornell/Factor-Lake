@@ -63,19 +63,38 @@ def plot_top_bottom_percent(rdata,
     def select_percent_tickers(market, pct, which='top'):
         rank_dicts = []
         for factor in factors:
+            # Build a per-ticker averaged value (treat nulls as zero when averaging)
             values = {}
             col = getattr(factor, 'column_name', str(factor))
-            for ticker in market.stocks.index:
-                try:
-                    v = factor.get(ticker, market)
-                except Exception:
-                    v = None
-                if v is None:
-                    continue
-                try:
-                    values[ticker] = float(v)
-                except Exception:
-                    continue
+            # If the factor has a column in the market, aggregate samples per ticker
+            if col in market.stocks.columns:
+                series = pd.to_numeric(market.stocks[col], errors='coerce')
+                # Treat nulls as zero for averaging as requested
+                series = series.fillna(0.0)
+                # group by ticker index and average across samples
+                grouped = series.groupby(series.index).mean()
+                for t, v in grouped.items():
+                    try:
+                        values[t] = float(v)
+                    except Exception:
+                        values[t] = 0.0
+            else:
+                # Fall back to calling the factor getter per row, aggregate per ticker
+                samples = {}
+                for idx in market.stocks.index:
+                    try:
+                        v = factor.get(idx, market)
+                    except Exception:
+                        v = None
+                    # treat missing sample as zero
+                    try:
+                        sample_val = 0.0 if v is None else float(v)
+                    except Exception:
+                        sample_val = 0.0
+                    samples.setdefault(idx, []).append(sample_val)
+                for t, vals in samples.items():
+                    if vals:
+                        values[t] = float(sum(vals) / len(vals))
             if not values:
                 continue
 
@@ -130,6 +149,10 @@ def plot_top_bottom_percent(rdata,
         market = MarketObject(rdata.loc[rdata['Year'] == year], year)
         next_market = MarketObject(rdata.loc[rdata['Year'] == next_year], next_year)
 
+        # initialize per-year per-factor stats containers so verbose printing is safe
+        top_factor_stats = []
+        bottom_factor_stats = []
+
         # Top cohort
         start_top = 0.0
         end_top = 0.0
@@ -173,13 +196,18 @@ def plot_top_bottom_percent(rdata,
             per_factor_alloc = top_values[-1] / n_factors
             universe_size_top = 0
             n_top = 0
+            # per-factor diagnostics: list of (factor_col, selected_count, valid_count, dropped_count)
+            top_factor_stats = []
             for factor in factors:
                 col = getattr(factor, 'column_name', str(factor))
                 # prefer vectorized series if available
                 if col in market.stocks.columns:
+                    # aggregate multiple samples per ticker by treating NaNs as zeros and averaging
                     series = pd.to_numeric(market.stocks[col], errors='coerce')
+                    series = series.fillna(0.0)
+                    grouped = series.groupby(series.index).mean()
                     higher_is_better = FACTOR_DOCS.get(col, {}).get('higher_is_better', True)
-                    normed = normalize_series(series, higher_is_better=higher_is_better)
+                    normed = normalize_series(grouped, higher_is_better=higher_is_better)
                     items = [(t, v) for t, v in normed.dropna().items()]
                 else:
                     items = []
@@ -201,9 +229,10 @@ def plot_top_bottom_percent(rdata,
                 top_list = [t for t, _ in items[:n]]
                 # keep an aggregated list for verbose diagnostics
                 top_tickers.extend(top_list)
+                # compute valid tickers for this factor (entry + possibly exit)
+                valid = []
                 if top_list:
                     # pre-filter valid tickers so per-factor allocation is fully invested
-                    valid = []
                     for t in top_list:
                         entry = market.get_price(t)
                         if entry is None or entry <= 0:
@@ -214,7 +243,9 @@ def plot_top_bottom_percent(rdata,
                                 continue
                             exit_price = entry
                         valid.append((t, entry, exit_price))
-                    top_dropped += (len(top_list) - len(valid))
+                    dropped = len(top_list) - len(valid)
+                    top_dropped += dropped
+                    top_factor_stats.append((col, len(top_list), len(valid), dropped))
                     if valid:
                         equal = per_factor_alloc / len(valid)
                         for t, entry, exit_price in valid:
@@ -225,6 +256,9 @@ def plot_top_bottom_percent(rdata,
                                 top_returns.append((exit_price / entry) - 1.0)
                             except Exception:
                                 top_returns.append(0.0)
+                else:
+                    # record zero selection for this factor
+                    top_factor_stats.append((col, 0, 0, 0))
             # fallback if nothing selected
             if end_top == 0:
                 end_top = top_values[-1]
@@ -279,12 +313,17 @@ def plot_top_bottom_percent(rdata,
                 per_factor_alloc_b = bottom_values[-1] / n_factors
                 universe_size_bot = 0
                 n_bot = 0
+                # per-factor diagnostics for bottom
+                bottom_factor_stats = []
                 for factor in factors:
                     col = getattr(factor, 'column_name', str(factor))
                     if col in market.stocks.columns:
+                        # aggregate multiple samples per ticker by treating NaNs as zeros and averaging
                         series = pd.to_numeric(market.stocks[col], errors='coerce')
+                        series = series.fillna(0.0)
+                        grouped = series.groupby(series.index).mean()
                         higher_is_better = FACTOR_DOCS.get(col, {}).get('higher_is_better', True)
-                        normed = normalize_series(series, higher_is_better=higher_is_better)
+                        normed = normalize_series(grouped, higher_is_better=higher_is_better)
                         items = [(t, v) for t, v in normed.dropna().items()]
                     else:
                         items = []
@@ -320,7 +359,9 @@ def plot_top_bottom_percent(rdata,
                                     continue
                                 exit_price = entry
                             valid.append((t, entry, exit_price))
-                        bot_dropped += (len(bot_list) - len(valid))
+                        dropped = len(bot_list) - len(valid)
+                        bot_dropped += dropped
+                        bottom_factor_stats.append((col, len(bot_list), len(valid), dropped))
                         if valid:
                             equal = per_factor_alloc_b / len(valid)
                             for t, entry, exit_price in valid:
@@ -350,6 +391,14 @@ def plot_top_bottom_percent(rdata,
         if top_tickers:
             if verbose:
                 print("  Top sample:", top_tickers[:10])
+            # per-factor stats if available
+            try:
+                if verbose and 'top_factor_stats' in locals() and top_factor_stats:
+                    print("  Top per-factor (factor, selected, valid, dropped):")
+                    for fcol, sel, valid_c, dropped in top_factor_stats:
+                        print(f"    {fcol}: selected={sel}, valid={valid_c}, dropped={dropped}")
+            except Exception:
+                pass
             try:
                 avg_top_r = sum(top_returns) / len(top_returns) if top_returns else 0.0
             except Exception:
@@ -364,6 +413,14 @@ def plot_top_bottom_percent(rdata,
         if show_bottom and bottom_tickers:
             if verbose:
                 print("  Bottom sample:", bottom_tickers[:10])
+            # per-factor stats for bottom if available
+            try:
+                if verbose and 'bottom_factor_stats' in locals() and bottom_factor_stats:
+                    print("  Bottom per-factor (factor, selected, valid, dropped):")
+                    for fcol, sel, valid_c, dropped in bottom_factor_stats:
+                        print(f"    {fcol}: selected={sel}, valid={valid_c}, dropped={dropped}")
+            except Exception:
+                pass
             try:
                 avg_bot_r = sum(bottom_returns) / len(bottom_returns) if bottom_returns else 0.0
             except Exception:
