@@ -1,6 +1,10 @@
 import matplotlib.pyplot as plt
 from market_object import MarketObject
 import math
+import pandas as pd
+
+# reuse normalization used elsewhere to match selection logic
+from factor_utils import normalize_series
 
 # Respect per-factor direction (higher_is_better) from the docs
 from factors_doc import FACTOR_DOCS
@@ -17,7 +21,8 @@ def plot_top_bottom_percent(rdata,
                             initial_investment=None,
                             require_all_factors=True,
                             verbose=False,
-                            drop_missing_next_price=True):
+                            drop_missing_next_price=False,
+                            selection_mode='combined'):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from a list of factors each year, alongside a benchmark.
@@ -113,31 +118,95 @@ def plot_top_bottom_percent(rdata,
         next_market = MarketObject(rdata.loc[rdata['Year'] == next_year], next_year)
 
         # Top cohort
-        top_tickers, universe_size_top, n_top = select_percent_tickers(market, percent, 'top')
         start_top = 0.0
         end_top = 0.0
         top_returns = []
-        if top_tickers:
-            equal = top_values[-1] / len(top_tickers)
-            for t in top_tickers:
-                entry = market.get_price(t)
-                if entry is None or entry <= 0:
-                    continue
-                exit_price = next_market.get_price(t)
-                if exit_price is None:
-                    if drop_missing_next_price:
-                        # skip this ticker entirely for realized return
+        top_dropped = 0
+        # aggregate list for verbose printing (populated in both selection modes)
+        top_tickers = []
+        universe_size_top = 0
+        n_top = 0
+        if selection_mode == 'combined':
+            top_tickers, universe_size_top, n_top = select_percent_tickers(market, percent, 'top')
+            if top_tickers:
+                equal = top_values[-1] / len(top_tickers)
+                for t in top_tickers:
+                    entry = market.get_price(t)
+                    if entry is None or entry <= 0:
                         continue
-                    exit_price = entry
-                shares = equal / entry
-                start_top += shares * entry
-                end_top += shares * exit_price
-                try:
-                    top_returns.append((exit_price / entry) - 1.0)
-                except Exception:
-                    top_returns.append(0.0)
+                    exit_price = next_market.get_price(t)
+                    if exit_price is None:
+                        if drop_missing_next_price:
+                            top_dropped += 1
+                            continue
+                        exit_price = entry
+                    shares = equal / entry
+                    start_top += shares * entry
+                    end_top += shares * exit_price
+                    try:
+                        top_returns.append((exit_price / entry) - 1.0)
+                    except Exception:
+                        top_returns.append(0.0)
+            else:
+                end_top = top_values[-1]
+        elif selection_mode == 'by_factor':
+            # Match calculate_holdings: equal allocation to each factor, then equal-dollar across that factor's top-N
+            n_factors = max(1, len(factors))
+            per_factor_alloc = top_values[-1] / n_factors
+            universe_size_top = 0
+            n_top = 0
+            for factor in factors:
+                col = getattr(factor, 'column_name', str(factor))
+                # prefer vectorized series if available
+                if col in market.stocks.columns:
+                    series = pd.to_numeric(market.stocks[col], errors='coerce')
+                    higher_is_better = FACTOR_DOCS.get(col, {}).get('higher_is_better', True)
+                    normed = normalize_series(series, higher_is_better=higher_is_better)
+                    items = [(t, v) for t, v in normed.dropna().items()]
+                else:
+                    items = []
+                    for t in market.stocks.index:
+                        try:
+                            v = factor.get(t, market)
+                        except Exception:
+                            v = None
+                        if v is None:
+                            continue
+                        try:
+                            items.append((t, float(v)))
+                        except Exception:
+                            continue
+                items = sorted(items, key=lambda x: x[1], reverse=True)
+                universe_size_top += len(items)
+                n = max(1, math.floor(len(items) * (percent / 100.0))) if items else 0
+                n_top += n
+                top_list = [t for t, _ in items[:n]]
+                # keep an aggregated list for verbose diagnostics
+                top_tickers.extend(top_list)
+                if top_list:
+                    equal = per_factor_alloc / len(top_list)
+                    for t in top_list:
+                        entry = market.get_price(t)
+                        if entry is None or entry <= 0:
+                            continue
+                        exit_price = next_market.get_price(t)
+                        if exit_price is None:
+                            if drop_missing_next_price:
+                                top_dropped += 1
+                                continue
+                            exit_price = entry
+                        shares = equal / entry
+                        start_top += shares * entry
+                        end_top += shares * exit_price
+                        try:
+                            top_returns.append((exit_price / entry) - 1.0)
+                        except Exception:
+                            top_returns.append(0.0)
+            # fallback if nothing selected
+            if end_top == 0:
+                end_top = top_values[-1]
         else:
-            end_top = top_values[-1]
+            raise ValueError(f"Unknown selection_mode: {selection_mode}")
 
         top_values.append(end_top)
 
@@ -145,32 +214,91 @@ def plot_top_bottom_percent(rdata,
         universe_size_bot = None
         n_bot = 0
         bottom_tickers = []
+        bot_dropped = 0
+        # initialize these so verbose diagnostics don't reference possibly-unbound names
+        start_bottom = 0.0
+        end_bottom = 0.0
+        bottom_returns = []
         if show_bottom:
             assert bottom_values is not None
-            bottom_tickers, universe_size_bot, n_bot = select_percent_tickers(market, percent, 'bottom')
-            start_bottom = 0.0
-            end_bottom = 0.0
-            bottom_returns = []
-            if bottom_tickers:
-                equal_b = bottom_values[-1] / len(bottom_tickers)
-                for t in bottom_tickers:
-                    entry = market.get_price(t)
-                    if entry is None or entry <= 0:
-                        continue
-                    exit_price = next_market.get_price(t)
-                    if exit_price is None:
-                        if drop_missing_next_price:
+            if selection_mode == 'combined':
+                bottom_tickers, universe_size_bot, n_bot = select_percent_tickers(market, percent, 'bottom')
+                if bottom_tickers:
+                    equal_b = bottom_values[-1] / len(bottom_tickers)
+                    for t in bottom_tickers:
+                        entry = market.get_price(t)
+                        if entry is None or entry <= 0:
                             continue
-                        exit_price = entry
-                    shares = equal_b / entry
-                    start_bottom += shares * entry
-                    end_bottom += shares * exit_price
-                    try:
-                        bottom_returns.append((exit_price / entry) - 1.0)
-                    except Exception:
-                        bottom_returns.append(0.0)
+                        exit_price = next_market.get_price(t)
+                        if exit_price is None:
+                            if drop_missing_next_price:
+                                bot_dropped += 1
+                                continue
+                            exit_price = entry
+                        shares = equal_b / entry
+                        start_bottom += shares * entry
+                        end_bottom += shares * exit_price
+                        try:
+                            bottom_returns.append((exit_price / entry) - 1.0)
+                        except Exception:
+                            bottom_returns.append(0.0)
+                else:
+                    end_bottom = bottom_values[-1]
+            elif selection_mode == 'by_factor':
+                n_factors = max(1, len(factors))
+                per_factor_alloc_b = bottom_values[-1] / n_factors
+                universe_size_bot = 0
+                n_bot = 0
+                for factor in factors:
+                    col = getattr(factor, 'column_name', str(factor))
+                    if col in market.stocks.columns:
+                        series = pd.to_numeric(market.stocks[col], errors='coerce')
+                        higher_is_better = FACTOR_DOCS.get(col, {}).get('higher_is_better', True)
+                        normed = normalize_series(series, higher_is_better=higher_is_better)
+                        items = [(t, v) for t, v in normed.dropna().items()]
+                    else:
+                        items = []
+                        for t in market.stocks.index:
+                            try:
+                                v = factor.get(t, market)
+                            except Exception:
+                                v = None
+                            if v is None:
+                                continue
+                            try:
+                                items.append((t, float(v)))
+                            except Exception:
+                                continue
+                    items = sorted(items, key=lambda x: x[1])  # worst->best
+                    universe_size_bot += len(items)
+                    n = max(1, math.floor(len(items) * (percent / 100.0))) if items else 0
+                    n_bot += n
+                    bot_list = [t for t, _ in items[:n]]
+                    # collect tickers for verbose diagnostics
+                    bottom_tickers.extend(bot_list)
+                    if bot_list:
+                        equal = per_factor_alloc_b / len(bot_list)
+                        for t in bot_list:
+                            entry = market.get_price(t)
+                            if entry is None or entry <= 0:
+                                continue
+                            exit_price = next_market.get_price(t)
+                            if exit_price is None:
+                                if drop_missing_next_price:
+                                    bot_dropped += 1
+                                    continue
+                                exit_price = entry
+                            shares = equal / entry
+                            start_bottom += shares * entry
+                            end_bottom += shares * exit_price
+                            try:
+                                bottom_returns.append((exit_price / entry) - 1.0)
+                            except Exception:
+                                bottom_returns.append(0.0)
+                if end_bottom == 0:
+                    end_bottom = bottom_values[-1]
             else:
-                end_bottom = bottom_values[-1]
+                raise ValueError(f"Unknown selection_mode: {selection_mode}")
             bottom_values.append(end_bottom)
 
         # Verbose diagnostics if requested
