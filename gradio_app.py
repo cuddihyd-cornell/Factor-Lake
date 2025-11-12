@@ -4,6 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 import os
+import sys
+import re
+import io
 
 from market_object import load_data
 from calculate_holdings import rebalance_portfolio
@@ -174,5 +177,18 @@ with gr.Blocks() as demo:
             output_summary_advanced
         ]
     )
+
+class FilteredOutput(io.StringIO):
+    def write(self, text):
+        if "Running on local URL" in text:
+            return  # suppress local URL
+        if "Running on public URL" in text:
+            public_url = re.search(r"(https://[^\s]+)", text)
+            if public_url:
+                print(f"\n🚀 App is live! Click here to open: {public_url.group(1)}\n")
+            return
+        super().write(text)
+
+sys.stdout = FilteredOutput()
 
 demo.queue().launch(share=True)
