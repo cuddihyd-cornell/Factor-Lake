@@ -215,7 +215,7 @@ def main():
         use_supabase = st.radio(
             "Select data source:",
             options=[True, False],
-            format_func=lambda x: "Supabase (Cloud)" if x else "Local Excel File",
+            format_func=lambda x: "Supabase (Cloud)" if x else "Local Excel File (🚧 Working on it)",
             index=0,
             help="Choose between cloud database or local Excel file"
         )
@@ -223,28 +223,26 @@ def main():
         excel_file = None
         uploaded_file = None
         if not use_supabase:
-            # Option 1: Upload file directly (works everywhere)
+            st.info("🚧 **Excel/CSV upload feature is currently under development**")
+            st.markdown("*Please use Supabase (Cloud) option for now.*")
+            
+            # Disabled file uploader (greyed out)
             uploaded_file = st.file_uploader(
                 "Upload Excel/CSV file:",
                 type=['xlsx', 'xls', 'csv'],
-                help="Upload your market data file"
+                help="Feature temporarily disabled - working on improvements",
+                disabled=True
             )
             
-            # Option 2: Enter Google Drive path (for Colab)
+            # Disabled text input (greyed out)
             st.markdown("**OR** enter Google Drive path (Colab only):")
             excel_file = st.text_input(
                 "File path:",
                 value="",
                 placeholder="/content/drive/MyDrive/yourfolder/data.xlsx",
-                help="For Colab: /content/drive/MyDrive/..."
+                help="Feature temporarily disabled - working on improvements",
+                disabled=True
             )
-            
-            if uploaded_file:
-                st.success(f"✅ File uploaded: {uploaded_file.name}")
-            elif excel_file and os.path.exists(excel_file):
-                st.success(f"✅ File found: {excel_file}")
-            elif excel_file:
-                st.warning(f"⚠️ File not found at: {excel_file}")
 
         st.write("---")
         # Fossil Fuel Restriction
@@ -552,6 +550,76 @@ def main():
             st.dataframe(perf_df, use_container_width=True, hide_index=True)
             
             st.divider()
+            
+            # Advanced Backtest Statistics
+            if 'sharpe_portfolio' in results and 'max_drawdown_portfolio' in results:
+                st.subheader("Advanced Backtest Statistics")
+                
+                # Display key metrics in columns
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("Max Drawdown (Portfolio)", 
+                             f"{results['max_drawdown_portfolio']*100:.2f}%",
+                             delta=None,
+                             help="Largest peak-to-trough decline in portfolio value")
+                
+                with col2:
+                    st.metric("Max Drawdown (Benchmark)", 
+                             f"{results['max_drawdown_benchmark']*100:.2f}%",
+                             delta=None,
+                             help="Largest peak-to-trough decline in Russell 2000")
+                
+                with col3:
+                    sharpe_delta = results['sharpe_portfolio'] - results['sharpe_benchmark']
+                    st.metric("Sharpe Ratio (Portfolio)", 
+                             f"{results['sharpe_portfolio']:.4f}",
+                             delta=f"{sharpe_delta:+.4f} vs benchmark",
+                             help="Risk-adjusted return (return per unit of volatility)")
+                
+                with col4:
+                    st.metric("Sharpe Ratio (Benchmark)", 
+                             f"{results['sharpe_benchmark']:.4f}",
+                             delta=None,
+                             help="Risk-adjusted return for Russell 2000")
+                
+                # Win rate and information ratio
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("Yearly Win Rate", 
+                             f"{results['win_rate']*100:.2f}%",
+                             delta=None,
+                             help="Percentage of years portfolio outperformed benchmark")
+                
+                with col2:
+                    if 'information_ratio' in results and results['information_ratio'] is not None:
+                        st.metric("Information Ratio", 
+                                 f"{results['information_ratio']:.4f}",
+                                 delta=None,
+                                 help="Active return per unit of active risk")
+                
+                with col3:
+                    st.metric("Risk-Free Rate Source", 
+                             results.get('risk_free_rate_source', 'N/A'),
+                             delta=None,
+                             help="Data source for risk-free rate calculations")
+                
+                # Yearly win/loss comparison table
+                if 'yearly_comparisons' in results:
+                    st.subheader("Yearly Win/Loss vs Benchmark")
+                    
+                    comparison_data = {
+                        'Year': [comp['year'] for comp in results['yearly_comparisons']],
+                        'Portfolio Return': [f"{comp['portfolio_return']:.2f}%" for comp in results['yearly_comparisons']],
+                        'Benchmark Return': [f"{comp['benchmark_return']:.2f}%" for comp in results['yearly_comparisons']],
+                        'Outperformed': ['✓' if comp['win'] else '✗' for comp in results['yearly_comparisons']]
+                    }
+                    
+                    comparison_df = pd.DataFrame(comparison_data)
+                    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+                
+                st.divider()
             
             # Download results
             st.subheader("Download Results")
