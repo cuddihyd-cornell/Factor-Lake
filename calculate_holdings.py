@@ -198,15 +198,22 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         print(f"Yearly Win Rate vs Benchmark: {win_rate:.2%}")
 
     return {
-        'final_value': aum,
-        'yearly_returns': portfolio_returns,
-        'benchmark_returns': [r * 100 for r in benchmark_np],
-        'years': years,
-        'portfolio_values': portfolio_values,
-        'max_drawdown_portfolio': max_drawdown_portfolio,
-        'max_drawdown_benchmark': max_drawdown_benchmark,
-        'sharpe_portfolio': sharpe_portfolio,
-        'sharpe_benchmark': sharpe_benchmark,
-        'win_rate': win_rate,
-        'risk_free_rate_source': risk_free_rate_source
-    }
+    'final_value': aum,
+    'yearly_returns': portfolio_returns,
+    'benchmark_returns': [r * 100 for r in benchmark_np],
+    'years': years,
+    'portfolio_values': portfolio_values,
+    'max_drawdown_portfolio': max_drawdown_portfolio,
+    'max_drawdown_benchmark': max_drawdown_benchmark,
+    'sharpe_portfolio': sharpe_portfolio,
+    'sharpe_benchmark': sharpe_benchmark,
+    'win_rate': win_rate,
+    'risk_free_rate_source': risk_free_rate_source,
+    'portfolio_annualized_return': annualized_return_portfolio * 100,
+    'benchmark_annualized_return': annualized_return_benchmark * 100,
+    'portfolio_volatility': annualized_volatility_portfolio * 100,
+    'benchmark_volatility': annualized_volatility_benchmark * 100,
+    'active_volatility': active_volatility * 100,
+    'information_ratio': information_ratio
+}
+
