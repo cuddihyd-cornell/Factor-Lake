@@ -32,7 +32,8 @@ def plot_top_bottom_percent(rdata,
                             return_details=False,
                             weight_mode='equal',
                             show_percent_guides=True,
-                            baseline_portfolio_values=None):
+                            baseline_portfolio_values=None,
+                            baseline_pct=10):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from a list of factors each year, alongside a benchmark.
@@ -676,7 +677,7 @@ def plot_top_bottom_percent(rdata,
             # compute baseline portfolio values using the same factors and rdata
             start_year = years[0]
             end_year = years[-1]
-            res = rebalance_portfolio(rdata, factors, start_year, end_year, initial_investment, verbosity=0, restrict_fossil_fuels=restrict_fossil_fuels)
+            res = rebalance_portfolio(rdata, factors, start_year, end_year, initial_investment, verbosity=0, restrict_fossil_fuels=restrict_fossil_fuels, top_pct=baseline_pct)
             candidate = res.get('portfolio_values') if isinstance(res, dict) else None
             if candidate:
                 baseline_portfolio_values = candidate

@@ -5,7 +5,10 @@ import pandas as pd
 from factors_doc import FACTOR_DOCS
 from factor_utils import normalize_series
 
-def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
+import math
+
+
+def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False, top_pct=10):
     # Apply sector restrictions if enabled
     if restrict_fossil_fuels:
         industry_col = 'FactSet Industry'
@@ -52,8 +55,9 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     
     sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
 
-    # Select the top 10% of securities
-    top_10_percent = sorted_securities[:max(1, len(sorted_securities) // 10)]
+    # Select the top `top_pct`% of securities (default 10%)
+    n_select = max(1, math.floor(len(sorted_securities) * (top_pct / 100.0))) if sorted_securities else 0
+    top_10_percent = sorted_securities[:n_select]
 
     # Calculate number of shares for each selected security
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
@@ -93,7 +97,7 @@ def calculate_growth(portfolio, next_market, current_market, verbosity=0):
     return growth, total_start_value, total_end_value
 
 
-def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=None, restrict_fossil_fuels=False):
+def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=0, restrict_fossil_fuels=False, top_pct=10):
     aum = initial_aum
     years = [start_year] # Start with the initial year
     portfolio_returns = []  # Store yearly returns for Information Ratio
@@ -110,7 +114,8 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
                 factor=factor,
                 aum=aum / len(factors),
                 market=market,
-                restrict_fossil_fuels=restrict_fossil_fuels
+                restrict_fossil_fuels=restrict_fossil_fuels,
+                top_pct=top_pct
             )
             yearly_portfolio.append(factor_portfolio)
 
