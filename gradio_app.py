@@ -1,5 +1,4 @@
 import gradio as gr
-from gradio import mount_gradio_app
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -133,7 +132,7 @@ with gr.Blocks() as demo:
         inputs=[selected_factors, restrict_fossil_fuels, selected_sectors, start_year, end_year, initial_aum, verbosity],
         outputs=[output_plot, output_table, output_csv]
     )
-
-app = mount_gradio_app(demo, path="/")
+    
+demo.queue().launch(server_name="0.0.0.0", server_port=7860, share=False)
 
 
