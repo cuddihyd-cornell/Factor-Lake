@@ -133,4 +133,5 @@ with gr.Blocks() as demo:
         outputs=[output_plot, output_table, output_csv]
     )
 
-demo.launch(inline=True)
+demo.launch(inline=True, debug=True)
+
