@@ -34,7 +34,7 @@ def plot_top_bottom_percent(rdata,
                             show_percent_guides=True,
                             baseline_portfolio_values=None,
                             baseline_pct=10,
-                            use_rebalance_for_selection=False):
+                            use_rebalance_for_selection=True):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from a list of factors each year, alongside a benchmark.
