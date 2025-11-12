@@ -1,4 +1,5 @@
 import gradio as gr
+from gradio import mount_gradio_app
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -133,5 +134,6 @@ with gr.Blocks() as demo:
         outputs=[output_plot, output_table, output_csv]
     )
 
-demo.launch(inline=True, debug=True)
+app = mount_gradio_app(demo, path="/")
+
 
