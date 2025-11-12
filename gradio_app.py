@@ -133,7 +133,7 @@ def run_analysis(selected_factors, restrict_fossil_fuels, selected_sectors, star
 
 # Gradio UI
 with gr.Blocks() as demo:
-    gr.Markdown("## 📊 Factor-Lake Portfolio Analysis (Gradio Edition)")
+    gr.Markdown("## 🤿🏊 Factor-Lake Portfolio Machine")
 
     with gr.Row():
         restrict_fossil_fuels = gr.Checkbox(label="Restrict Fossil Fuel Companies?", value=False)
