@@ -92,7 +92,7 @@ def run_analysis(selected_factors, restrict_fossil_fuels, selected_sectors, star
         benchmark_values = [initial_aum]
         for ret in results['benchmark_returns']:
             benchmark_values.append(benchmark_values[-1] * (1 + ret / 100))
-        ax.plot(results['years'], benchmark_values[1:], label='Russell 2000', linestyle='--')
+        ax.plot(results['years'][1:], benchmark_values[1:], label='Russell 2000', linestyle='--')
     ax.set_title("Portfolio Growth")
     ax.set_xlabel("Year")
     ax.set_ylabel("Value ($)")
