@@ -178,19 +178,11 @@ with gr.Blocks() as demo:
         ]
     )
 
-class FilteredOutput(io.StringIO):
-    def __init__(self):
-        super().__init__()
-        self.buffer = ""
+launch_info = demo.launch(share=True)
+public_url = launch_info.get("share_url")
 
-    def write(self, text):
-        self.buffer += text
-        if "Running on public URL" in text:
-            match = re.search(r"(https://[^\s]+)", text)
-            if match:
-                print(f"\n🚀 App is live! Click here to open: {match.group(1)}\n")
-
-sys.stdout = FilteredOutput()
-demo.queue().launch(share=True)
-sys.stdout.flush()
+if public_url:
+    print(f"\n🚀 App is live! Click here to open: {public_url}\n")
+else:
+    print("\n⚠️ App launched, but no public URL was returned.\n")
 
