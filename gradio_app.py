@@ -4,10 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 import os
-import sys
-import re
-import io
-import logging
+import time
 
 from market_object import load_data
 from calculate_holdings import rebalance_portfolio
@@ -179,15 +176,6 @@ with gr.Blocks() as demo:
         ]
     )
 
-
-logging.getLogger("gradio").setLevel(logging.ERROR)
-
-launch_info = demo.launch(share=True)
-public_url = launch_info.get("share_url")
-
-if public_url:
-    print(f"\n🚀 App is live! Click here to open: {public_url}\n")
-    print("🔗 This link is temporary and will expire in 1 week.\n")
-else:
-    print("\n⚠️ App launched, but no public URL was returned.\n")
-
+demo.queue().launch(share=True)
+time.sleep(2)  # give Gradio a moment to print its own logs
+print("\n🚀 App is live! Click the public URL above to open the dashboard.\n")
