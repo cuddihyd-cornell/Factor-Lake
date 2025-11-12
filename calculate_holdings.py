@@ -146,6 +146,7 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         print(f"Overall Growth from {start_year} to {end_year}: {overall_growth * 100:.2f}%")
         print(f"\n==== Performance Metrics ====")
 
+    # === Basic Stats ===
     portfolio_np = np.array(portfolio_returns)
     benchmark_np = np.array(benchmark_returns)
     active_returns = portfolio_np - benchmark_np
