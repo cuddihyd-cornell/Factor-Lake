@@ -177,5 +177,3 @@ with gr.Blocks() as demo:
     )
 
 demo.queue().launch(share=True)
-time.sleep(2)  # give Gradio a moment to print its own logs
-print("\n🚀 App is live! Click the public URL above to open the dashboard.\n")
