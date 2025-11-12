@@ -24,7 +24,8 @@ def plot_top_bottom_percent(rdata,
                             drop_missing_next_price=True,
                             selection_mode='by_factor',
                             return_details=False,
-                            weight_mode='equal'):
+                            weight_mode='equal',
+                            show_percent_guides=True):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from a list of factors each year, alongside a benchmark.
@@ -676,6 +677,26 @@ def plot_top_bottom_percent(rdata,
         plt.axhline(initial_investment, color='k', linestyle=':', linewidth=0.8)
     except Exception:
         pass
+    # Optionally draw horizontal guide lines at the cohorts' final percent returns (converted to dollars)
+    if show_percent_guides:
+        try:
+            # final values
+            top_final = top_values[-1]
+            top_pct = (top_final / initial_investment - 1.0) * 100.0
+            plt.axhline(top_final, color='g', linestyle='--', linewidth=0.8)
+            # annotate percentage on the right
+            plt.text(years[-1], top_final, f"  {top_pct:+.1f}%", va='center', color='g')
+        except Exception:
+            pass
+        if show_bottom and bottom_values is not None:
+            try:
+                bot_final = bottom_values[-1]
+                bot_pct = (bot_final / initial_investment - 1.0) * 100.0
+                plt.axhline(bot_final, color='m', linestyle='--', linewidth=0.8)
+                plt.text(years[-1], bot_final, f"  {bot_pct:+.1f}%", va='center', color='m')
+            except Exception:
+                pass
+
     plt.legend()
     plt.tight_layout()
     plt.show()
