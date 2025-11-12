@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import os
 
-from src.market_object import load_data
-from src.calculate_holdings import rebalance_portfolio
-from src.factor_function import (
+from market_object import load_data
+from calculate_holdings import rebalance_portfolio
+from factor_function import (
     Momentum6m, Momentum12m, Momentum1m, ROE, ROA, 
     P2B, NextFYrEarns, OneYrPriceVol,
     AccrualsAssets, ROAPercentage, OneYrAssetGrowth, OneYrCapEXGrowth, BookPrice
