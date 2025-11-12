@@ -190,9 +190,11 @@ FACTOR_MAP = {
 
 # Sector options
 SECTOR_OPTIONS = [
-    'Technology', 'Healthcare', 'Financial Services', 'Consumer Cyclical',
-    'Industrials', 'Communication Services', 'Consumer Defensive',
-    'Energy', 'Basic Materials', 'Real Estate', 'Utilities'
+    'Consumer',
+    'Technology',
+    'Financials',
+    'Industrials',
+    'Healthcare'
 ]
 
 def main():
