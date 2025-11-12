@@ -9,6 +9,12 @@ from factor_utils import normalize_series
 # Respect per-factor direction (higher_is_better) from the docs
 from factors_doc import FACTOR_DOCS
 
+# Optionally compute baseline portfolio values using calculate_holdings.rebalance_portfolio
+try:
+    from calculate_holdings import rebalance_portfolio
+except Exception:
+    rebalance_portfolio = None
+
 
 def plot_top_bottom_percent(rdata,
                             factors,
@@ -665,14 +671,26 @@ def plot_top_bottom_percent(rdata,
         plt.plot(years, benchmark_values, marker='s', linestyle='--', color='r', label=benchmark_label)
 
     # Optionally plot a baseline portfolio growth series (from portfolio_growth_plot)
+    if baseline_portfolio_values is None and rebalance_portfolio is not None:
+        try:
+            # compute baseline portfolio values using the same factors and rdata
+            start_year = years[0]
+            end_year = years[-1]
+            res = rebalance_portfolio(rdata, factors, start_year, end_year, initial_investment, verbosity=0, restrict_fossil_fuels=restrict_fossil_fuels)
+            candidate = res.get('portfolio_values') if isinstance(res, dict) else None
+            if candidate:
+                baseline_portfolio_values = candidate
+        except Exception:
+            baseline_portfolio_values = None
+
     if baseline_portfolio_values is not None:
         try:
             bp = list(baseline_portfolio_values)
             if len(bp) == len(years):
-                plt.plot(years, bp, marker='o', linestyle='-', color='b', label='Portfolio (baseline)')
+                plt.plot(years, bp, marker='o', linestyle='-', color='b', label='Portfolio')
             else:
                 common_len = min(len(years), len(bp))
-                plt.plot(years[:common_len], bp[:common_len], marker='o', linestyle='-', color='b', label='Portfolio (baseline)')
+                plt.plot(years[:common_len], bp[:common_len], marker='o', linestyle='-', color='b', label='Portfolio')
         except Exception:
             pass
 
