@@ -25,7 +25,8 @@ def plot_top_bottom_percent(rdata,
                             selection_mode='by_factor',
                             return_details=False,
                             weight_mode='equal',
-                            show_percent_guides=True):
+                            show_percent_guides=True,
+                            baseline_portfolio_values=None):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from a list of factors each year, alongside a benchmark.
@@ -662,6 +663,18 @@ def plot_top_bottom_percent(rdata,
         plt.plot(years, bottom_values, marker='o', linestyle='-', color='m', label=f'Bottom {percent}%')
     if benchmark_values is not None and len(benchmark_values) == len(years):
         plt.plot(years, benchmark_values, marker='s', linestyle='--', color='r', label=benchmark_label)
+
+    # Optionally plot a baseline portfolio growth series (from portfolio_growth_plot)
+    if baseline_portfolio_values is not None:
+        try:
+            bp = list(baseline_portfolio_values)
+            if len(bp) == len(years):
+                plt.plot(years, bp, marker='o', linestyle='-', color='b', label='Portfolio (baseline)')
+            else:
+                common_len = min(len(years), len(bp))
+                plt.plot(years[:common_len], bp[:common_len], marker='o', linestyle='-', color='b', label='Portfolio (baseline)')
+        except Exception:
+            pass
 
     try:
         factor_set_name = ", ".join([str(f) for f in factors])
