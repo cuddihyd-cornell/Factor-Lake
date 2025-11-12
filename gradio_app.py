@@ -179,16 +179,18 @@ with gr.Blocks() as demo:
     )
 
 class FilteredOutput(io.StringIO):
+    def __init__(self):
+        super().__init__()
+        self.buffer = ""
+
     def write(self, text):
-        if "Running on local URL" in text:
-            return  # suppress local URL
+        self.buffer += text
         if "Running on public URL" in text:
-            public_url = re.search(r"(https://[^\s]+)", text)
-            if public_url:
-                print(f"\n🚀 App is live! Click here to open: {public_url.group(1)}\n")
-            return
-        super().write(text)
+            match = re.search(r"(https://[^\s]+)", text)
+            if match:
+                print(f"\n🚀 App is live! Click here to open: {match.group(1)}\n")
 
 sys.stdout = FilteredOutput()
-
 demo.queue().launch(share=True)
+sys.stdout.flush()
+
