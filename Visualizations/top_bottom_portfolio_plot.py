@@ -656,8 +656,9 @@ def plot_top_bottom_percent(rdata,
     plt.figure(figsize=(10, 6))
     plt.plot(years, top_values, marker='o', linestyle='-', color='g', label=f'Top {percent}%')
     if show_bottom and bottom_values is not None:
-        # plot bottom cohort as negative values so the curve appears below zero
-        plt.plot(years, [-v for v in bottom_values], marker='o', linestyle='-', color='m', label=f'Bottom {percent}%')
+        # Plot bottom cohort normally so both series start at the same initial investment
+        # and the bottom line will go down when the cohort loses value (e.g., < initial_investment).
+        plt.plot(years, bottom_values, marker='o', linestyle='-', color='m', label=f'Bottom {percent}%')
     if benchmark_values is not None and len(benchmark_values) == len(years):
         plt.plot(years, benchmark_values, marker='s', linestyle='--', color='r', label=benchmark_label)
 
@@ -670,6 +671,11 @@ def plot_top_bottom_percent(rdata,
     plt.xlabel('Year')
     plt.ylabel('Dollar Invested ($)')
     plt.grid(True)
+    # show initial investment baseline for reference
+    try:
+        plt.axhline(initial_investment, color='k', linestyle=':', linewidth=0.8)
+    except Exception:
+        pass
     plt.legend()
     plt.tight_layout()
     plt.show()
