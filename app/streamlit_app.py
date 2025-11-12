@@ -663,6 +663,47 @@ def main():
         **Quality Factors:**
         - Companies with stable earnings and low volatility
             
+        ### Factor Details & Investment Thesis
+        
+        **1. ROE using 9/30 Data** *(Higher is better)*  
+        Firms with higher return on equity generate more profit from shareholder capital, indicating efficient capital allocation and stronger profitability prospects.
+        
+        **2. ROA using 9/30 Data** *(Higher is better)*  
+        Return on assets measures how efficiently a company uses its assets to generate earnings; higher ROA typically signals better operational efficiency.
+        
+        **3. 12-Mo Momentum %** *(Higher is better)*  
+        Stocks that have performed well over the past 12 months tend to continue to outperform in the near-term due to persistent investor behavior and trend continuation.
+        
+        **4. 6-Mo Momentum %** *(Higher is better)*  
+        Stocks with strong 6-month performance often continue upward in the short-term; this captures intermediate-term momentum.
+        
+        **5. 1-Mo Momentum %** *(Higher is better)*  
+        One-month momentum captures very short-term trend continuation; higher recent returns indicate near-term strength.
+        
+        **6. Price to Book Using 9/30 Data** *(Lower is better - factor inverted)*  
+        A lower price-to-book (P/B) implies the stock is cheaper relative to its book value; economically we expect higher book-to-price (inverse of P/B) to indicate value.
+        
+        **7. Next FY Earns/P** *(Higher is better)*  
+        Earnings yield (next fiscal year earnings / price) indicates how cheaply the market prices future earnings; higher values suggest more attractive valuation.
+        
+        **8. 1-Yr Price Vol %** *(Lower is better - factor inverted)*  
+        Higher trailing 1-year price volatility may indicate higher risk or mispricing; lower volatility is preferable for risk-averse portfolios.
+        
+        **9. Accruals/Assets** *(Lower is better - factor inverted)*  
+        High accruals relative to assets can indicate lower earnings quality; lower accrual ratios are generally preferable.
+        
+        **10. ROA %** *(Higher is better)*  
+        Return on assets (percentage) measures profitability relative to asset base; higher ROA suggests better operating performance.
+        
+        **11. 1-Yr Asset Growth %** *(Higher is better)*  
+        Higher asset growth can signal expansion and investment opportunities; higher is treated as more attractive for growth-oriented factors.
+        
+        **12. 1-Yr CapEX Growth %** *(Higher is better)*  
+        Rising capital expenditures can indicate investment in future growth; higher CapEx growth is often treated as positive for growth strategies.
+        
+        **13. Book/Price** *(Higher is better)*  
+        Book-to-price is the inverse of price-to-book and aligns directly with the value thesis: higher book/price means cheaper relative to book value and thus more attractive.
+            
         ### How to Use
             
         1. **Configure** your data source and filters in the sidebar
@@ -683,13 +724,12 @@ def main():
             
         ### Resources
             
-        - [Project Repository](https://github.com/FMDX-7/Factor-Lake_2)
-        - [Documentation](README.md)
+        - [Project Repository](https://github.com/cuddihyd-cornell/Factor-Lake/tree/revamped_ux)
             
         ---
             
         **Version:** 1.0.0  
-        **Last Updated:** October 2025
+        **Last Updated:** November 2025
         """)
 
 if __name__ == "__main__":
