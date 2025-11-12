@@ -8,7 +8,7 @@ from factor_utils import normalize_series
 import math
 
 
-def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False, top_pct=10):
+def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False, top_pct=10, which='top'):
     # Apply sector restrictions if enabled
     if restrict_fossil_fuels:
         industry_col = 'FactSet Industry'
@@ -55,15 +55,22 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False, top_pct
     
     sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
 
-    # Select the top `top_pct`% of securities (default 10%)
+    # Select the top or bottom `top_pct`% of securities (default 10%)
     n_select = max(1, math.floor(len(sorted_securities) * (top_pct / 100.0))) if sorted_securities else 0
-    top_10_percent = sorted_securities[:n_select]
+    if n_select == 0:
+        selected = []
+    else:
+        if which == 'top':
+            selected = sorted_securities[:n_select]
+        else:
+            # bottom: take the weakest n_select securities
+            selected = sorted_securities[-n_select:]
 
     # Calculate number of shares for each selected security
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
-    equal_investment = aum / len(top_10_percent)
+    equal_investment = aum / len(selected) if selected else 0
 
-    for ticker, _ in top_10_percent:
+    for ticker, _ in selected:
         price = market.get_price(ticker)
         if price is not None and price > 0:
             shares = equal_investment / price
@@ -97,7 +104,7 @@ def calculate_growth(portfolio, next_market, current_market, verbosity=0):
     return growth, total_start_value, total_end_value
 
 
-def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=0, restrict_fossil_fuels=False, top_pct=10):
+def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=0, restrict_fossil_fuels=False, top_pct=10, which='top'):
     aum = initial_aum
     years = [start_year] # Start with the initial year
     portfolio_returns = []  # Store yearly returns for Information Ratio
@@ -115,7 +122,8 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
                 aum=aum / len(factors),
                 market=market,
                 restrict_fossil_fuels=restrict_fossil_fuels,
-                top_pct=top_pct
+                top_pct=top_pct,
+                which=which
             )
             yearly_portfolio.append(factor_portfolio)
 
