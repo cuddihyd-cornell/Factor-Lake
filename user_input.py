@@ -95,6 +95,7 @@ def get_top_bottom_options(selected_factor_names):
     # Percent input
     while True:
         try:
+            print("*DISCLAIMER*: When N selected as 10%, Top 10% will not be visible due to the fact that the portfolio's plot only takes into account the top 10% of the portfolio.")
             pct = int(input("Enter percentage N (1-100) for Top/Bottom selection (e.g. 10): "))
             if pct < 1 or pct > 100:
                 raise ValueError
