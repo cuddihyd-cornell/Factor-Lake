@@ -41,27 +41,33 @@ from datetime import datetime
 def check_password():
     """Returns `True` if the user had the correct password."""
     
+    configured_password = st.secrets.get("password", os.environ.get("ADMIN_PASSWORD"))
+
     def password_entered():
         """Checks whether a password entered by the user is correct."""
-        if st.session_state["password"] == st.secrets["password"]:
+        if configured_password is not None and st.session_state["password"] == configured_password:
             st.session_state["password_correct"] = True
             del st.session_state["password"]  # Don't store password
         else:
             st.session_state["password_correct"] = False
 
+    if configured_password is None:
+        st.info("Admin password is not configured. Set 'password' in Streamlit Secrets (or ADMIN_PASSWORD env) to enable access.")
+        return False
+
     if "password_correct" not in st.session_state:
         # First run, show input for password
         st.text_input(
-            "🔒 Enter Password", type="password", on_change=password_entered, key="password"
+            "Enter Password", type="password", on_change=password_entered, key="password"
         )
         st.write("*Please contact your administrator for access*")
         return False
     elif not st.session_state["password_correct"]:
         # Password incorrect, show input + error
         st.text_input(
-            "🔒 Enter Password", type="password", on_change=password_entered, key="password"
+            "Enter Password", type="password", on_change=password_entered, key="password"
         )
-        st.error("😕 Password incorrect")
+        st.error("Password incorrect")
         return False
     else:
         # Password correct
@@ -81,7 +87,6 @@ from Visualizations.portfolio_growth_plot import plot_portfolio_growth
 # Page configuration
 st.set_page_config(
     page_title="Factor-Lake Portfolio Analysis",
-    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -142,26 +147,28 @@ st.markdown("""
         gap: 8px;
     }
     
-    .stTabs [data-baseweb="tab"] {
+                if st.session_state["password"] == configured_password:
         border-radius: 8px 8px 0 0;
         padding: 10px 20px;
         font-weight: 600;
     }
     
-    /* Checkboxes */
+            if configured_password is None:
+                st.info("Admin password is not configured. Set 'password' in Streamlit Secrets (or ADMIN_PASSWORD env) to enable access.")
+                return False
     .stCheckbox {
         padding: 5px 0;
     }
-    
+                    "Enter Password", type="password", on_change=password_entered, key="password"
     /* Expander */
     .streamlit-expanderHeader {
         border-radius: 8px;
         font-weight: 600;
     }
     
-    /* Success/Error messages */
+                    "Enter Password", type="password", on_change=password_entered, key="password"
     .element-container .stSuccess {
-        background-color: #d4edda;
+                st.error("Password incorrect")
         border-left: 4px solid #28a745;
     }
     
@@ -245,39 +252,12 @@ def main():
     # Sidebar - Configuration
     with st.sidebar:
         st.header("Configuration")
-        # Data Source Selection
+        # Data Source
         st.subheader("Data Source")
-        use_supabase = st.radio(
-            "Select data source:",
-            options=[True, False],
-            format_func=lambda x: "Supabase (Cloud)" if x else "Local Excel File (🚧 Working on it)",
-            index=0,
-            help="Choose between cloud database or local Excel file"
-        )
-
+        st.caption("Data source: Supabase (cloud)")
+        use_supabase = True
         excel_file = None
         uploaded_file = None
-        if not use_supabase:
-            st.info("🚧 **Excel/CSV upload feature is currently under development**")
-            st.markdown("*Please use Supabase (Cloud) option for now.*")
-            
-            # Disabled file uploader (greyed out)
-            uploaded_file = st.file_uploader(
-                "Upload Excel/CSV file:",
-                type=['xlsx', 'xls', 'csv'],
-                help="Feature temporarily disabled - working on improvements",
-                disabled=True
-            )
-            
-            # Disabled text input (greyed out)
-            st.markdown("**OR** enter Google Drive path (Colab only):")
-            excel_file = st.text_input(
-                "File path:",
-                value="",
-                placeholder="/content/drive/MyDrive/yourfolder/data.xlsx",
-                help="Feature temporarily disabled - working on improvements",
-                disabled=True
-            )
 
         st.write("---")
         # Fossil Fuel Restriction
@@ -396,67 +376,52 @@ def main():
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if st.button("Load Data", use_container_width=True, type="primary"):
-                if not use_supabase and not excel_file and not uploaded_file:
-                    st.error("Please upload a file or provide an Excel file path")
-                else:
-                    with st.spinner("Loading market data..."):
-                        try:
-                            sectors_to_use = selected_sectors if sector_filter_enabled else None
-                            
-                            # Determine data source
-                            data_source = None
-                            if use_supabase:
-                                data_source = None  # load_data will use Supabase
-                            elif uploaded_file:
-                                # Use uploaded file object directly
-                                data_source = uploaded_file
-                            elif excel_file:
-                                # Use file path
-                                data_source = excel_file
-                            
-                            rdata = load_data(
-                                restrict_fossil_fuels=restrict_fossil_fuels,
-                                use_supabase=use_supabase,
-                                data_path=data_source if not use_supabase else None,
-                                show_loading_progress=show_loading,
-                                sectors=sectors_to_use
-                            )
-                            
-                            # Data preprocessing
-                            rdata['Ticker'] = rdata['Ticker-Region'].dropna().apply(
-                                lambda x: x.split('-')[0].strip()
-                            )
-                            rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
-                            
-                            # Keep only relevant columns
-                            cols_to_keep = ['Ticker', 'Year']
-                            if 'Ending Price' in rdata.columns:
-                                cols_to_keep.append('Ending Price')
-                            elif 'Ending_Price' in rdata.columns:
-                                rdata['Ending Price'] = rdata['Ending_Price']
-                                cols_to_keep.append('Ending Price')
-                            
-                            for factor in FACTOR_MAP.keys():
-                                if factor in rdata.columns:
-                                    cols_to_keep.append(factor)
-                            
-                            rdata = rdata[cols_to_keep]
-                            
-                            st.session_state.rdata = rdata
-                            st.session_state.data_loaded = True
-                            
-                            st.success(f"Data loaded successfully! {len(rdata)} records from {rdata['Year'].min()} to {rdata['Year'].max()}")
-                            
-                            # Show data preview
-                            with st.expander("Data Preview"):
-                                st.dataframe(rdata.head(100), use_container_width=True)
-                                st.write(f"**Shape:** {rdata.shape[0]} rows × {rdata.shape[1]} columns")
-                                st.write(f"**Years:** {sorted(rdata['Year'].unique())}")
-                                st.write(f"**Unique Tickers:** {rdata['Ticker'].nunique()}")
-                        
-                        except Exception as e:
-                            st.error(f"Error loading data: {str(e)}")
-                            st.exception(e)
+                with st.spinner("Loading market data..."):
+                    try:
+                        sectors_to_use = selected_sectors if sector_filter_enabled else None
+
+                        rdata = load_data(
+                            restrict_fossil_fuels=restrict_fossil_fuels,
+                            use_supabase=True,
+                            data_path=None,
+                            show_loading_progress=show_loading,
+                            sectors=sectors_to_use
+                        )
+
+                        # Data preprocessing
+                        rdata['Ticker'] = rdata['Ticker-Region'].dropna().apply(
+                            lambda x: x.split('-')[0].strip()
+                        )
+                        rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
+
+                        # Keep only relevant columns
+                        cols_to_keep = ['Ticker', 'Year']
+                        if 'Ending Price' in rdata.columns:
+                            cols_to_keep.append('Ending Price')
+                        elif 'Ending_Price' in rdata.columns:
+                            rdata['Ending Price'] = rdata['Ending_Price']
+                            cols_to_keep.append('Ending Price')
+
+                        for factor in FACTOR_MAP.keys():
+                            if factor in rdata.columns:
+                                cols_to_keep.append(factor)
+
+                        rdata = rdata[cols_to_keep]
+
+                        st.session_state.rdata = rdata
+                        st.session_state.data_loaded = True
+
+                        st.success(f"Data loaded successfully! {len(rdata)} records from {rdata['Year'].min()} to {rdata['Year'].max()}")
+
+                        # Show data preview
+                        with st.expander("Data Preview"):
+                            st.dataframe(rdata.head(100), use_container_width=True)
+                            st.write(f"**Shape:** {rdata.shape[0]} rows × {rdata.shape[1]} columns")
+                            st.write(f"**Years:** {sorted(rdata['Year'].unique())}")
+                            st.write(f"**Unique Tickers:** {rdata['Ticker'].nunique()}")
+                    except Exception as e:
+                        st.error(f"Error loading data: {str(e)}")
+                        st.exception(e)
         
         st.write("---")
         
@@ -648,7 +613,7 @@ def main():
                         'Year': [comp['year'] for comp in results['yearly_comparisons']],
                         'Portfolio Return': [f"{comp['portfolio_return']:.2f}%" for comp in results['yearly_comparisons']],
                         'Benchmark Return': [f"{comp['benchmark_return']:.2f}%" for comp in results['yearly_comparisons']],
-                        'Outperformed': ['✓' if comp['win'] else '✗' for comp in results['yearly_comparisons']]
+                        'Outperformed': ['Yes' if comp['win'] else 'No' for comp in results['yearly_comparisons']]
                     }
                     
                     comparison_df = pd.DataFrame(comparison_data)
@@ -668,7 +633,7 @@ def main():
             )
             
         else:
-            st.info("👈 Run an analysis from the Analysis tab to see results here")
+            st.info("Run an analysis from the Analysis tab to see results here")
     
     with tab3:
         st.header("About Factor-Lake Portfolio Analysis")
