@@ -16,14 +16,56 @@ if env_path.exists():
                 key, value = line.split('=', 1)
                 os.environ[key] = value
 
-# Add src directory to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+# Add src directory to path by searching parent directories until a `src` folder
+# is found. This makes the app runnable from different working directories
+def _ensure_src_on_path():
+    p = Path(__file__).resolve().parent
+    # Look up to 6 parent levels for a sibling 'src' directory
+    for _ in range(6):
+        candidate = p / 'src'
+        if candidate.is_dir():
+            sys.path.insert(0, str(p))
+            return
+        p = p.parent
+    # Fallback: use the original one-level-up heuristic
+    sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+
+_ensure_src_on_path()
 
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
+
+def check_password():
+    """Returns `True` if the user had the correct password."""
+    
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        if st.session_state["password"] == st.secrets["password"]:
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Don't store password
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # First run, show input for password
+        st.text_input(
+            "🔒 Enter Password", type="password", on_change=password_entered, key="password"
+        )
+        st.write("*Please contact your administrator for access*")
+        return False
+    elif not st.session_state["password_correct"]:
+        # Password incorrect, show input + error
+        st.text_input(
+            "🔒 Enter Password", type="password", on_change=password_entered, key="password"
+        )
+        st.error("😕 Password incorrect")
+        return False
+    else:
+        # Password correct
+        return True
 
 # Import project modules
 from src.market_object import load_data
@@ -177,12 +219,18 @@ FACTOR_MAP = {
 
 # Sector options
 SECTOR_OPTIONS = [
-    'Technology', 'Healthcare', 'Financial Services', 'Consumer Cyclical',
-    'Industrials', 'Communication Services', 'Consumer Defensive',
-    'Energy', 'Basic Materials', 'Real Estate', 'Utilities'
+    'Consumer',
+    'Technology',
+    'Financials',
+    'Industrials',
+    'Healthcare'
 ]
 
 def main():
+    # Check password first
+    if not check_password():
+        st.stop()  # Stop execution if password is incorrect
+    
     # Header
     st.markdown('<div class="main-header">Factor-Lake Portfolio Analysis</div>', unsafe_allow_html=True)
     
@@ -202,16 +250,34 @@ def main():
         use_supabase = st.radio(
             "Select data source:",
             options=[True, False],
-            format_func=lambda x: "Supabase (Cloud)" if x else "Local Excel File",
+            format_func=lambda x: "Supabase (Cloud)" if x else "Local Excel File (🚧 Working on it)",
             index=0,
             help="Choose between cloud database or local Excel file"
         )
 
         excel_file = None
+        uploaded_file = None
         if not use_supabase:
-            # Use preset path for Excel file in Colab
-            excel_file = "/content/drive/MyDrive/yourfile.xlsx"  # Change to your actual file path
-            st.markdown(f"**Using preset Excel file:** `{excel_file}`")
+            st.info("🚧 **Excel/CSV upload feature is currently under development**")
+            st.markdown("*Please use Supabase (Cloud) option for now.*")
+            
+            # Disabled file uploader (greyed out)
+            uploaded_file = st.file_uploader(
+                "Upload Excel/CSV file:",
+                type=['xlsx', 'xls', 'csv'],
+                help="Feature temporarily disabled - working on improvements",
+                disabled=True
+            )
+            
+            # Disabled text input (greyed out)
+            st.markdown("**OR** enter Google Drive path (Colab only):")
+            excel_file = st.text_input(
+                "File path:",
+                value="",
+                placeholder="/content/drive/MyDrive/yourfolder/data.xlsx",
+                help="Feature temporarily disabled - working on improvements",
+                disabled=True
+            )
 
         st.write("---")
         # Fossil Fuel Restriction
@@ -330,16 +396,28 @@ def main():
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             if st.button("Load Data", use_container_width=True, type="primary"):
-                if not use_supabase and not excel_file:
-                    st.error("Please provide an Excel file path")
+                if not use_supabase and not excel_file and not uploaded_file:
+                    st.error("Please upload a file or provide an Excel file path")
                 else:
                     with st.spinner("Loading market data..."):
                         try:
                             sectors_to_use = selected_sectors if sector_filter_enabled else None
+                            
+                            # Determine data source
+                            data_source = None
+                            if use_supabase:
+                                data_source = None  # load_data will use Supabase
+                            elif uploaded_file:
+                                # Use uploaded file object directly
+                                data_source = uploaded_file
+                            elif excel_file:
+                                # Use file path
+                                data_source = excel_file
+                            
                             rdata = load_data(
                                 restrict_fossil_fuels=restrict_fossil_fuels,
                                 use_supabase=use_supabase,
-                                data_path=excel_file if not use_supabase else None,
+                                data_path=data_source if not use_supabase else None,
                                 show_loading_progress=show_loading,
                                 sectors=sectors_to_use
                             )
@@ -508,6 +586,76 @@ def main():
             
             st.divider()
             
+            # Advanced Backtest Statistics
+            if 'sharpe_portfolio' in results and 'max_drawdown_portfolio' in results:
+                st.subheader("Advanced Backtest Statistics")
+                
+                # Display key metrics in columns
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    st.metric("Max Drawdown (Portfolio)", 
+                             f"{results['max_drawdown_portfolio']*100:.2f}%",
+                             delta=None,
+                             help="Largest peak-to-trough decline in portfolio value")
+                
+                with col2:
+                    st.metric("Max Drawdown (Benchmark)", 
+                             f"{results['max_drawdown_benchmark']*100:.2f}%",
+                             delta=None,
+                             help="Largest peak-to-trough decline in Russell 2000")
+                
+                with col3:
+                    sharpe_delta = results['sharpe_portfolio'] - results['sharpe_benchmark']
+                    st.metric("Sharpe Ratio (Portfolio)", 
+                             f"{results['sharpe_portfolio']:.4f}",
+                             delta=f"{sharpe_delta:+.4f} vs benchmark",
+                             help="Risk-adjusted return (return per unit of volatility)")
+                
+                with col4:
+                    st.metric("Sharpe Ratio (Benchmark)", 
+                             f"{results['sharpe_benchmark']:.4f}",
+                             delta=None,
+                             help="Risk-adjusted return for Russell 2000")
+                
+                # Win rate and information ratio
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("Yearly Win Rate", 
+                             f"{results['win_rate']*100:.2f}%",
+                             delta=None,
+                             help="Percentage of years portfolio outperformed benchmark")
+                
+                with col2:
+                    if 'information_ratio' in results and results['information_ratio'] is not None:
+                        st.metric("Information Ratio", 
+                                 f"{results['information_ratio']:.4f}",
+                                 delta=None,
+                                 help="Active return per unit of active risk")
+                
+                with col3:
+                    st.metric("Risk-Free Rate Source", 
+                             results.get('risk_free_rate_source', 'N/A'),
+                             delta=None,
+                             help="Data source for risk-free rate calculations")
+                
+                # Yearly win/loss comparison table
+                if 'yearly_comparisons' in results:
+                    st.subheader("Yearly Win/Loss vs Benchmark")
+                    
+                    comparison_data = {
+                        'Year': [comp['year'] for comp in results['yearly_comparisons']],
+                        'Portfolio Return': [f"{comp['portfolio_return']:.2f}%" for comp in results['yearly_comparisons']],
+                        'Benchmark Return': [f"{comp['benchmark_return']:.2f}%" for comp in results['yearly_comparisons']],
+                        'Outperformed': ['✓' if comp['win'] else '✗' for comp in results['yearly_comparisons']]
+                    }
+                    
+                    comparison_df = pd.DataFrame(comparison_data)
+                    st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+                
+                st.divider()
+            
             # Download results
             st.subheader("Download Results")
             
@@ -548,6 +696,47 @@ def main():
         **Quality Factors:**
         - Companies with stable earnings and low volatility
             
+        ### Factor Details & Investment Thesis
+        
+        **1. ROE using 9/30 Data** *(Higher is better)*  
+        Firms with higher return on equity generate more profit from shareholder capital, indicating efficient capital allocation and stronger profitability prospects.
+        
+        **2. ROA using 9/30 Data** *(Higher is better)*  
+        Return on assets measures how efficiently a company uses its assets to generate earnings; higher ROA typically signals better operational efficiency.
+        
+        **3. 12-Mo Momentum %** *(Higher is better)*  
+        Stocks that have performed well over the past 12 months tend to continue to outperform in the near-term due to persistent investor behavior and trend continuation.
+        
+        **4. 6-Mo Momentum %** *(Higher is better)*  
+        Stocks with strong 6-month performance often continue upward in the short-term; this captures intermediate-term momentum.
+        
+        **5. 1-Mo Momentum %** *(Higher is better)*  
+        One-month momentum captures very short-term trend continuation; higher recent returns indicate near-term strength.
+        
+        **6. Price to Book Using 9/30 Data** *(Lower is better - factor inverted)*  
+        A lower price-to-book (P/B) implies the stock is cheaper relative to its book value; economically we expect higher book-to-price (inverse of P/B) to indicate value.
+        
+        **7. Next FY Earns/P** *(Higher is better)*  
+        Earnings yield (next fiscal year earnings / price) indicates how cheaply the market prices future earnings; higher values suggest more attractive valuation.
+        
+        **8. 1-Yr Price Vol %** *(Lower is better - factor inverted)*  
+        Higher trailing 1-year price volatility may indicate higher risk or mispricing; lower volatility is preferable for risk-averse portfolios.
+        
+        **9. Accruals/Assets** *(Lower is better - factor inverted)*  
+        High accruals relative to assets can indicate lower earnings quality; lower accrual ratios are generally preferable.
+        
+        **10. ROA %** *(Higher is better)*  
+        Return on assets (percentage) measures profitability relative to asset base; higher ROA suggests better operating performance.
+        
+        **11. 1-Yr Asset Growth %** *(Higher is better)*  
+        Higher asset growth can signal expansion and investment opportunities; higher is treated as more attractive for growth-oriented factors.
+        
+        **12. 1-Yr CapEX Growth %** *(Higher is better)*  
+        Rising capital expenditures can indicate investment in future growth; higher CapEx growth is often treated as positive for growth strategies.
+        
+        **13. Book/Price** *(Higher is better)*  
+        Book-to-price is the inverse of price-to-book and aligns directly with the value thesis: higher book/price means cheaper relative to book value and thus more attractive.
+            
         ### How to Use
             
         1. **Configure** your data source and filters in the sidebar
@@ -568,13 +757,12 @@ def main():
             
         ### Resources
             
-        - [Project Repository](https://github.com/FMDX-7/Factor-Lake_2)
-        - [Documentation](README.md)
+        - [Project Repository](https://github.com/cuddihyd-cornell/Factor-Lake/tree/revamped_ux)
             
         ---
             
         **Version:** 1.0.0  
-        **Last Updated:** October 2025
+        **Last Updated:** November 2025
         """)
 
 if __name__ == "__main__":
