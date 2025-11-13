@@ -5,10 +5,12 @@ scripts/extract_functions.py
 # Environment variables (IMPORTANT - contains secrets!)
 .env
 .env.local
+app/.env
 
-# Streamlit
+# Streamlit local config & secrets
 .streamlit/
 *.streamlit/
+.streamlit/secrets.toml
 
 # Coverage reports
 htmlcov/
@@ -21,17 +23,29 @@ env/
 ENV/
 .venv/
 
-# IDE
+# IDE/editor
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# OS
+# OS metadata
 .DS_Store
 Thumbs.db
 
-# Data files (if you don't want to commit large data)
+# Data files (avoid committing large raw data)
 *.xlsx
 *.csv
 data/
+
+# Jupyter / Colab checkpoints
+.ipynb_checkpoints/
+
+# Mypy / pytest caches
+.mypy_cache/
+.pytest_cache/
+
+# Build artifacts (if any appear later)
+dist/
+build/
+*.egg-info/

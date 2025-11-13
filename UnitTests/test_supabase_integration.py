@@ -9,7 +9,7 @@ Run with: pytest -m integration (when credentials are available)
 import pytest
 import pandas as pd
 import os
-from supabase_client import load_supabase_data
+from src.supabase_client import load_supabase_data
 
 # Skip entire module if no credentials
 pytestmark = [

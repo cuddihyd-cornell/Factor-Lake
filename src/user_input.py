@@ -1,4 +1,4 @@
-import factor_function
+from . import factor_function
 
 def get_factors(available_factors):
     # Display the lists of available factors with index
@@ -39,35 +39,35 @@ def get_factors(available_factors):
                 break
     
         name = available_factors[selected_factor - 1]
-        match name:
-            case "ROE using 9/30 Data":
-                factors.append((factor_function.ROE(), name))
-            case "ROA using 9/30 Data":
-                factors.append((factor_function.ROA(), name))
-            case "6-Mo Momentum %":
-                factors.append((factor_function.Momentum6m(), name))
-            case "12-Mo Momentum %":
-                factors.append((factor_function.Momentum12m(), name))
-            case "1-Mo Momentum %":
-                factors.append((factor_function.Momentum1m(), name))
-            case "Price to Book Using 9/30 Data":
-                factors.append((factor_function.P2B(), name))
-            case "Next FY Earns/P":
-                factors.append((factor_function.NextFYrEarns(), name))
-            case "1-Yr Price Vol %":
-                factors.append((factor_function.OneYrPriceVol(), name))
-            case "Accruals/Assets":
-                factors.append((factor_function.AccrualsAssets(), name))
-            case "ROA %":
-                factors.append((factor_function.ROAPercentage(), name))
-            case "1-Yr Asset Growth %":
-                factors.append((factor_function.OneYrAssetGrowth(), name))
-            case "1-Yr CapEX Growth %":
-                factors.append((factor_function.OneYrCapEXGrowth(), name))
-            case "Book/Price":
-                factors.append((factor_function.BookPrice(), name))
-            case _:
-                print(f"factor {name} is not available.")
+        # Python 3.9 compatible mapping (no match-case)
+        if name == "ROE using 9/30 Data":
+            factors.append((factor_function.ROE(), name))
+        elif name == "ROA using 9/30 Data":
+            factors.append((factor_function.ROA(), name))
+        elif name == "6-Mo Momentum %":
+            factors.append((factor_function.Momentum6m(), name))
+        elif name == "12-Mo Momentum %":
+            factors.append((factor_function.Momentum12m(), name))
+        elif name == "1-Mo Momentum %":
+            factors.append((factor_function.Momentum1m(), name))
+        elif name == "Price to Book Using 9/30 Data":
+            factors.append((factor_function.P2B(), name))
+        elif name == "Next FY Earns/P":
+            factors.append((factor_function.NextFYrEarns(), name))
+        elif name == "1-Yr Price Vol %":
+            factors.append((factor_function.OneYrPriceVol(), name))
+        elif name == "Accruals/Assets":
+            factors.append((factor_function.AccrualsAssets(), name))
+        elif name == "ROA %":
+            factors.append((factor_function.ROAPercentage(), name))
+        elif name == "1-Yr Asset Growth %":
+            factors.append((factor_function.OneYrAssetGrowth(), name))
+        elif name == "1-Yr CapEX Growth %":
+            factors.append((factor_function.OneYrCapEXGrowth(), name))
+        elif name == "Book/Price":
+            factors.append((factor_function.BookPrice(), name))
+        else:
+            print(f"factor {name} is not available.")
     
     return factors
     

@@ -5,12 +5,12 @@ Tests portfolio construction, rebalancing, and performance calculations
 import pytest
 import pandas as pd
 import numpy as np
-from calculate_holdings import (
+from src.calculate_holdings import (
     calculate_holdings, calculate_growth, rebalance_portfolio,
     get_benchmark_return, calculate_information_ratio
 )
-from factor_function import Momentum6m, ROE, ROA
-from market_object import MarketObject, load_data
+from src.factor_function import Momentum6m, ROE, ROA
+from src.market_object import MarketObject, load_data
 
 
 class TestCalculateHoldings:
@@ -127,14 +127,13 @@ class TestCalculateGrowth:
     @pytest.fixture
     def portfolio_list(self):
         """Create a list of portfolios"""
-        from portfolio import Portfolio
-        
+        from src.portfolio import Portfolio
+
         portfolio = Portfolio(name="Test Portfolio")
         portfolio.add_investment('AAPL', 10)
         portfolio.add_investment('MSFT', 5)
-        
+
         return [portfolio]
-    
     @pytest.fixture
     def current_market(self):
         """Create current market"""
