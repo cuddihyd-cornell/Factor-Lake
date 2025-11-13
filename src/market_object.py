@@ -89,8 +89,7 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
             
         except Exception as e:
             print(f"Error loading from Supabase: {e}")
-            print("Falling back to Excel file...")
-            use_supabase = False
+            raise RuntimeError(f"Failed to load data from Supabase. Please check your Supabase configuration and secrets. Error: {e}")
     
     if not use_supabase:
         # Fallback to local file (Excel or CSV). Accepts a data_path (CSV/Excel path OR file-like object).
