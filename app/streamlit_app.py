@@ -38,6 +38,35 @@ import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
 
+def check_password():
+    """Returns `True` if the user had the correct password."""
+    
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        if st.session_state["password"] == st.secrets["password"]:
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Don't store password
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # First run, show input for password
+        st.text_input(
+            "🔒 Enter Password", type="password", on_change=password_entered, key="password"
+        )
+        st.write("*Please contact your administrator for access*")
+        return False
+    elif not st.session_state["password_correct"]:
+        # Password incorrect, show input + error
+        st.text_input(
+            "🔒 Enter Password", type="password", on_change=password_entered, key="password"
+        )
+        st.error("😕 Password incorrect")
+        return False
+    else:
+        # Password correct
+        return True
+
 # Import project modules
 from src.market_object import load_data
 from src.calculate_holdings import rebalance_portfolio
@@ -198,6 +227,10 @@ SECTOR_OPTIONS = [
 ]
 
 def main():
+    # Check password first
+    if not check_password():
+        st.stop()  # Stop execution if password is incorrect
+    
     # Header
     st.markdown('<div class="main-header">Factor-Lake Portfolio Analysis</div>', unsafe_allow_html=True)
     
