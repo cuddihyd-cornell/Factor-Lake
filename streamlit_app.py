@@ -37,6 +37,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 from datetime import datetime
+from collections import deque
+import io
 
 def check_password():
     """Returns `True` if the user had the correct password."""
@@ -77,6 +79,76 @@ from src.factor_function import (
 )
 # Import from Visualizations (not in src)
 from Visualizations.portfolio_growth_plot import plot_portfolio_growth
+
+# -----------------------------
+# Lightweight in-app debug log capture
+# -----------------------------
+LOG_BUFFER_KEY = "_debug_log_buffer"
+TEE_ACTIVE_KEY = "_debug_tee_active"
+STDOUT_ORIG_KEY = "_stdout_orig"
+STDERR_ORIG_KEY = "_stderr_orig"
+
+def _init_log_buffer(maxlen: int = 500):
+    if LOG_BUFFER_KEY not in st.session_state:
+        st.session_state[LOG_BUFFER_KEY] = deque(maxlen=maxlen)
+
+class _Tee(io.TextIOBase):
+    def __init__(self, original, buffer_deque: deque):
+        self._original = original
+        self._buffer = buffer_deque
+    def write(self, s):
+        try:
+            self._original.write(s)
+        except Exception:
+            pass
+        # Split into lines to avoid flooding buffer with long chunks
+        try:
+            for line in s.splitlines():
+                line = line.rstrip("\n")
+                if line:
+                    self._buffer.append(line)
+        except Exception:
+            pass
+        return len(s)
+    def flush(self):
+        try:
+            self._original.flush()
+        except Exception:
+            pass
+
+def enable_log_capture(enable: bool):
+    """Tee stdout/stderr into an in-memory buffer so logs can be viewed in the app.
+    Safe to call repeatedly; handles toggling on/off.
+    """
+    _init_log_buffer()
+    active = st.session_state.get(TEE_ACTIVE_KEY, False)
+    if enable and not active:
+        # Activate tee
+        st.session_state[STDOUT_ORIG_KEY] = sys.stdout
+        st.session_state[STDERR_ORIG_KEY] = sys.stderr
+        sys.stdout = _Tee(st.session_state[STDOUT_ORIG_KEY], st.session_state[LOG_BUFFER_KEY])
+        sys.stderr = _Tee(st.session_state[STDERR_ORIG_KEY], st.session_state[LOG_BUFFER_KEY])
+        st.session_state[TEE_ACTIVE_KEY] = True
+    elif not enable and active:
+        # Restore originals
+        if STDOUT_ORIG_KEY in st.session_state:
+            sys.stdout = st.session_state[STDOUT_ORIG_KEY]
+        if STDERR_ORIG_KEY in st.session_state:
+            sys.stderr = st.session_state[STDERR_ORIG_KEY]
+        st.session_state[TEE_ACTIVE_KEY] = False
+
+def render_debug_panel():
+    if st.session_state.get(TEE_ACTIVE_KEY, False):
+        with st.expander("Debug log (server output)", expanded=False):
+            cols = st.columns([1,1,1])
+            with cols[0]:
+                if st.button("Clear logs"):
+                    st.session_state[LOG_BUFFER_KEY].clear()
+            with cols[1]:
+                max_lines = st.number_input("Show last N lines", min_value=50, max_value=2000, value=400, step=50)
+            # Render last N lines
+            buf = list(st.session_state[LOG_BUFFER_KEY])[-int(max_lines):]
+            st.code("\n".join(buf) if buf else "<no logs yet>", language="text")
 
 # Page configuration
 st.set_page_config(
@@ -320,16 +392,20 @@ def main():
             help="Starting portfolio value in dollars"
         )
         st.write("---")
-        # Verbosity
-        st.subheader("Output Detail")
-        verbosity_level = st.select_slider(
-            "Verbosity Level",
-            options=[0, 1, 2, 3],
-            value=1,
-            format_func=lambda x: ["Silent", "Basic", "Detailed", "Debug"][x],
-            help="Control the amount of detail in output logs"
-        )
-        show_loading = st.checkbox("Show data loading progress", value=True)
+        # Developer options (logging)
+        with st.expander("Developer options (logging)", expanded=False):
+            st.caption("Controls how much is printed to the server logs (your local terminal or Streamlit Cloud → Manage app → Logs). Not shown to end users in the UI.")
+            verbosity_level = st.select_slider(
+                "Verbosity Level",
+                options=[0, 1, 2, 3],
+                value=1,
+                format_func=lambda x: ["Silent", "Basic", "Detailed", "Debug"][x],
+            )
+            show_loading = st.checkbox("Show data loading progress in logs", value=True)
+            capture_logs = st.checkbox("Show Debug log panel in-app", value=False)
+            # Persist the toggle and activate/deactivate capture
+            st.session_state["capture_logs_enabled"] = capture_logs
+            enable_log_capture(capture_logs)
 
     # Main content area
     tab1, tab2, tab3 = st.tabs(["Analysis", "Results", "About"])
@@ -383,6 +459,9 @@ def main():
         selected_factor_names = [name for name, selected in all_factor_selections.items() if selected]
         
         st.write("---")
+        # Optional debug log panel
+        if st.session_state.get("capture_logs_enabled"):
+            render_debug_panel()
         
         # Display selected factors
         if selected_factor_names:
@@ -666,6 +745,9 @@ def main():
                 file_name=f"portfolio_performance_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                 mime="text/csv"
             )
+            # Optional debug log panel
+            if st.session_state.get("capture_logs_enabled"):
+                render_debug_panel()
             
         else:
             st.info("👈 Run an analysis from the Analysis tab to see results here")
@@ -764,6 +846,9 @@ def main():
         **Version:** 1.0.0  
         **Last Updated:** November 2025
         """)
+        # Optional debug log panel
+        if st.session_state.get("capture_logs_enabled"):
+            render_debug_panel()
 
 if __name__ == "__main__":
     main()
