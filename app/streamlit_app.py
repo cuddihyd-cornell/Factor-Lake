@@ -313,10 +313,66 @@ def main():
         show_loading = st.checkbox("Show data loading progress", value=True)
 
     # Main content area
-    tab1, tab2, tab3 = st.tabs(["Analysis", "Results", "About"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Analysis", "Results", "N-Graph", "About"])
     
-    with tab1:
-        st.header("Factor Selection")
+    with tab3:
+        st.header("N-Graph: Top vs Bottom Cohort Analysis")
+
+        # Require results from an analysis to ensure we have years, portfolio values, and selected factors
+        if st.session_state.get('results') is None or st.session_state.get('rdata') is None:
+            st.info("Run an analysis from the Analysis tab first to enable N-Graph.")
+        else:
+            results = st.session_state.results
+
+            st.markdown("""
+            This view compares the performance of the top and bottom N% of stocks selected by your chosen
+            factors each year, alongside the benchmark and your portfolio series. Use it to visualize the
+            distribution of factor effectiveness across the universe.
+            """)
+
+            col1, col2 = st.columns(2)
+            with col1:
+                cohort_pct_ng = st.slider(
+                    "Select Cohort Percentage",
+                    min_value=5,
+                    max_value=50,
+                    value=10,
+                    step=5,
+                    help="Percentage of stocks to include in top/bottom cohorts"
+                )
+            with col2:
+                show_bottom_ng = st.checkbox("Show Bottom Cohort", value=True)
+
+            if st.button("Generate N-Graph", key="ngraph_btn"):
+                with st.spinner("Generating N-Graph..."):
+                    try:
+                        factor_objects = [FACTOR_MAP[name]() for name in st.session_state.selected_factors]
+                        years_for_plot = results['years']
+
+                        fig_ng = plot_top_bottom_percent(
+                            rdata=st.session_state.rdata,
+                            factors=factor_objects,
+                            years=years_for_plot,
+                            percent=cohort_pct_ng,
+                            show_bottom=show_bottom_ng,
+                            restrict_fossil_fuels=st.session_state.restrict_ff,
+                            benchmark_returns=results.get('benchmark_returns'),
+                            benchmark_label='Russell 2000',
+                            initial_investment=st.session_state.initial_aum,
+                            verbose=False,
+                            baseline_portfolio_values=results.get('portfolio_values'),
+                            use_rebalance_for_selection=True
+                        )
+
+                        if fig_ng is not None:
+                            st.pyplot(fig_ng, use_container_width=True)
+                        st.success(f"N-Graph generated for top {cohort_pct_ng}%{' and bottom' if show_bottom_ng else ''} cohorts.")
+                    except Exception as e:
+                        st.error(f"Error generating N-Graph: {str(e)}")
+                        if st.session_state.get('verbosity', 1) >= 2:
+                            st.exception(e)
+
+    with tab4:
         st.write("Select one or more factors for your portfolio strategy:")
         
         # Create columns for factor selection
