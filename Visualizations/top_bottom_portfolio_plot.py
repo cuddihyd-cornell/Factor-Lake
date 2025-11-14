@@ -34,7 +34,8 @@ def plot_top_bottom_percent(rdata,
                             show_percent_guides=True,
                             baseline_portfolio_values=None,
                             baseline_pct=10,
-                            use_rebalance_for_selection=True):
+                            use_rebalance_for_selection=True,
+                            show_top=True):
     """
     Plot dollar-invested growth for the top-N% and optionally bottom-N% portfolios
     constructed from a list of factors each year, alongside a benchmark.
@@ -352,7 +353,8 @@ def plot_top_bottom_percent(rdata,
 
     # Plot
     plt.figure(figsize=(10, 6))
-    plt.plot(years, top_values, marker='o', linestyle='-', color='g', label=f'Top {percent}%')
+    if show_top:
+        plt.plot(years, top_values, marker='o', linestyle='-', color='g', label=f'Top {percent}%')
     if show_bottom and bottom_values is not None:
         # Plot bottom cohort normally so both series start at the same initial investment
         # and the bottom line will go down when the cohort loses value (e.g., < initial_investment).
