@@ -83,6 +83,7 @@ from src.factor_function import (
 )
 # Import from Visualizations (not in src)
 from Visualizations.portfolio_growth_plot import plot_portfolio_growth
+from Visualizations.top_bottom_portfolio_plot import plot_top_bottom_percent
 
 # Page configuration
 st.set_page_config(
@@ -523,6 +524,65 @@ def main():
             ax.yaxis.set_major_formatter(FuncFormatter(lambda x, p: f'${x:,.0f}'))
             
             st.pyplot(fig)
+            
+            st.divider()
+            
+            # Top/Bottom Cohort Analysis
+            st.subheader("Top vs Bottom Cohort Analysis")
+            
+            with st.expander("View Top/Bottom Portfolio Performance", expanded=False):
+                st.markdown("""
+                This visualization compares the performance of the **top N%** and **bottom N%** 
+                of stocks selected by your factors against the benchmark and the main portfolio.
+                """)
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    cohort_pct = st.slider(
+                        "Select Cohort Percentage",
+                        min_value=5,
+                        max_value=50,
+                        value=10,
+                        step=5,
+                        help="Percentage of stocks to include in top/bottom cohorts"
+                    )
+                with col2:
+                    show_bottom_cohort = st.checkbox("Show Bottom Cohort", value=True, help="Display the bottom-performing cohort")
+                
+                if st.button("Generate Top/Bottom Analysis", key="top_bottom_btn"):
+                    with st.spinner("Generating cohort analysis..."):
+                        try:
+                            # Get factor objects
+                            factor_objects = [FACTOR_MAP[name] for name in st.session_state.selected_factors]
+                            
+                            # Get years from results
+                            analysis_years = results['years']
+                            
+                            # Create the plot
+                            fig_cohort = plot_top_bottom_percent(
+                                rdata=st.session_state.rdata,
+                                factors=factor_objects,
+                                years=analysis_years,
+                                percent=cohort_pct,
+                                show_bottom=show_bottom_cohort,
+                                restrict_fossil_fuels=st.session_state.restrict_ff,
+                                benchmark_returns=results.get('benchmark_returns'),
+                                benchmark_label='Russell 2000',
+                                initial_investment=st.session_state.initial_aum,
+                                verbose=False,
+                                baseline_portfolio_values=results['portfolio_values'],
+                                use_rebalance_for_selection=True
+                            )
+                            
+                            # Display the figure
+                            if fig_cohort is not None:
+                                st.pyplot(fig_cohort)
+                                st.success(f"Cohort analysis complete! Comparing top {cohort_pct}% vs bottom {cohort_pct}% cohorts.")
+                            
+                        except Exception as e:
+                            st.error(f"Error generating cohort analysis: {str(e)}")
+                            if verbosity_level >= 2:
+                                st.exception(e)
             
             st.divider()
             

@@ -420,7 +420,11 @@ def plot_top_bottom_percent(rdata,
 
     plt.legend()
     plt.tight_layout()
-    plt.show()
+    
+    # Return the figure for Streamlit instead of calling plt.show()
+    fig = plt.gcf()  # Get current figure
+    
     # end of function
     if details is not None:
         return details
+    return fig
