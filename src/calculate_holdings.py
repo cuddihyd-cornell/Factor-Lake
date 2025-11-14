@@ -5,7 +5,7 @@ import pandas as pd
 from .factors_doc import FACTOR_DOCS
 from .factor_utils import normalize_series
 
-def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False, top_pct=10, which='top'):
+def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False, top_pct=10, which='top', use_market_cap_weight=False):
     # Apply sector restrictions if enabled
     if restrict_fossil_fuels:
         industry_col = 'FactSet Industry'
@@ -66,13 +66,54 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False, top_pct
 
     # Calculate number of shares for each selected security
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
-    equal_investment = aum / len(selected) if selected else 0
-
-    for ticker, _ in selected:
-        price = market.get_price(ticker)
-        if price is not None and price > 0:
-            shares = equal_investment / price
-            portfolio_new.add_investment(ticker, shares)
+    
+    if use_market_cap_weight:
+        # Market capitalization-based weighting (similar to Russell 2000)
+        # Get market cap for each selected ticker
+        market_caps = {}
+        for ticker, _ in selected:
+            # Try to get market cap from the data
+            if 'Market Capitalization' in market.stocks.columns:
+                try:
+                    market_cap = market.stocks.loc[ticker, 'Market Capitalization']
+                    if isinstance(market_cap, (pd.Series, np.ndarray)):
+                        market_cap = market_cap.iloc[0] if len(market_cap) > 0 else None
+                    if pd.notna(market_cap) and market_cap > 0:
+                        market_caps[ticker] = float(market_cap)
+                except (KeyError, IndexError):
+                    pass
+        
+        # If we have market caps, use them for weighting
+        if market_caps:
+            total_market_cap = sum(market_caps.values())
+            
+            for ticker, _ in selected:
+                if ticker in market_caps:
+                    # Weight by market cap: (ticker_market_cap / total_market_cap) * AUM
+                    weight = market_caps[ticker] / total_market_cap
+                    dollar_investment = weight * aum
+                    
+                    price = market.get_price(ticker)
+                    if price is not None and price > 0:
+                        shares = dollar_investment / price
+                        portfolio_new.add_investment(ticker, shares)
+        else:
+            # Fallback to equal weighting if market cap data not available
+            print(f"Warning: Market Capitalization data not available for year {market.t}. Using equal weighting.")
+            equal_investment = aum / len(selected) if selected else 0
+            for ticker, _ in selected:
+                price = market.get_price(ticker)
+                if price is not None and price > 0:
+                    shares = equal_investment / price
+                    portfolio_new.add_investment(ticker, shares)
+    else:
+        # Equal dollar weighting (original behavior)
+        equal_investment = aum / len(selected) if selected else 0
+        for ticker, _ in selected:
+            price = market.get_price(ticker)
+            if price is not None and price > 0:
+                shares = equal_investment / price
+                portfolio_new.add_investment(ticker, shares)
 
     return portfolio_new
 
@@ -102,7 +143,7 @@ def calculate_growth(portfolio, next_market, current_market, verbosity=0):
     return growth, total_start_value, total_end_value
 
 
-def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=0, restrict_fossil_fuels=False, top_pct=10, which='top'):
+def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=0, restrict_fossil_fuels=False, top_pct=10, which='top', use_market_cap_weight=False):
     aum = initial_aum
     years = [start_year] # Start with the initial year
     portfolio_returns = []  # Store yearly returns for Information Ratio
@@ -133,7 +174,8 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
                 market=market,
                 restrict_fossil_fuels=restrict_fossil_fuels,
                 top_pct=top_pct,
-                which=which
+                which=which,
+                use_market_cap_weight=use_market_cap_weight
             )
             yearly_portfolio.append(factor_portfolio)
 

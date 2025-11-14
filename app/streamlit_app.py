@@ -269,6 +269,20 @@ def main():
             help="Exclude oil, gas, coal, and fossil energy companies"
         )
         st.write("---")
+        # Portfolio Weighting Method
+        st.subheader("Portfolio Weighting")
+        weighting_method = st.radio(
+            "Select weighting method:",
+            options=["Equal Weight", "Market Cap Weight"],
+            index=0,
+            help="Equal Weight: Each stock gets equal dollar investment. Market Cap Weight: Weight by market capitalization (similar to Russell 2000)"
+        )
+        use_market_cap_weight = (weighting_method == "Market Cap Weight")
+        
+        if use_market_cap_weight:
+            st.info("📊 Market Cap Weighting: Stocks will be weighted by their market capitalization, similar to the Russell 2000 index. This reduces turnover costs and aligns with market performance.")
+        
+        st.write("---")
         # Sector Selection
         st.subheader("Sector Selection")
         sector_filter_enabled = st.checkbox("Enable Sector Filter", value=False)
@@ -395,13 +409,20 @@ def main():
                         )
                         rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
 
-                        # Keep only relevant columns
+                        # Keep only relevant columns (include Market Capitalization for cap-weighted portfolios)
                         cols_to_keep = ['Ticker', 'Year']
                         if 'Ending Price' in rdata.columns:
                             cols_to_keep.append('Ending Price')
                         elif 'Ending_Price' in rdata.columns:
                             rdata['Ending Price'] = rdata['Ending_Price']
                             cols_to_keep.append('Ending Price')
+                        
+                        # Add Market Capitalization if available (needed for cap-weighted portfolios)
+                        if 'Market Capitalization' in rdata.columns:
+                            cols_to_keep.append('Market Capitalization')
+                        elif 'Market_Capitalization' in rdata.columns:
+                            rdata['Market Capitalization'] = rdata['Market_Capitalization']
+                            cols_to_keep.append('Market Capitalization')
 
                         for factor in FACTOR_MAP.keys():
                             if factor in rdata.columns:
@@ -447,13 +468,15 @@ def main():
                                     end_year=int(end_year),
                                     initial_aum=initial_aum,
                                     verbosity=verbosity_level,
-                                    restrict_fossil_fuels=restrict_fossil_fuels
+                                    restrict_fossil_fuels=restrict_fossil_fuels,
+                                    use_market_cap_weight=use_market_cap_weight
                                 )
                                 
                                 st.session_state.results = results
                                 st.session_state.selected_factors = selected_factor_names
                                 st.session_state.restrict_ff = restrict_fossil_fuels
                                 st.session_state.initial_aum = initial_aum
+                                st.session_state.use_cap_weight = use_market_cap_weight
                                 
                                 st.success("Analysis complete! Check the Results tab.")
                             
@@ -466,6 +489,16 @@ def main():
         
         if st.session_state.results is not None:
             results = st.session_state.results
+            
+            # Display configuration info
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.caption(f"**Factors:** {', '.join(st.session_state.selected_factors)}")
+            with col2:
+                weighting_label = "Market Cap Weighted" if st.session_state.get('use_cap_weight', False) else "Equal Weighted"
+                st.caption(f"**Weighting:** {weighting_label}")
+            
+            st.divider()
             
             # Summary metrics
             st.subheader("Performance Summary")
