@@ -1,4 +1,4 @@
-# Factor-Lake Streamlit Application
+# Factor-Lake Streamlit Application (alternative option that is not currently implemented)
 
 An interactive web application for factor-based portfolio analysis and backtesting.
 
