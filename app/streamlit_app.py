@@ -123,10 +123,10 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     
-    /* Sidebar (configuration panel) - warm Cayuga accent */
+    /* Sidebar (configuration panel) - grey accent */
     [data-testid="stSidebar"] {
-        background-color: #fff6f6; /* warm cream */
-        border-left: 4px solid #B31B1B; /* thin carnelian accent */
+        background-color: #DEDFE0; /* grey */
+        border-left: 4px solid #3BD2E3; /* lake accent */
         padding-left: 8px;
     }
     
@@ -896,7 +896,8 @@ def main():
                         'Year': [comp['year'] for comp in results['yearly_comparisons']],
                         'Portfolio Return': [f"{comp['portfolio_return']:.2f}%" for comp in results['yearly_comparisons']],
                         'Benchmark Return': [f"{comp['benchmark_return']:.2f}%" for comp in results['yearly_comparisons']],
-                        'Outperformed': ['Yes' if comp['win'] else 'No' for comp in results['yearly_comparisons']]
+                        # Use a green check for wins and a red cross for losses instead of Yes/No
+                        'Outperformed': ['✅' if comp['win'] else '❌' for comp in results['yearly_comparisons']]
                     }
                     
                     comparison_df = pd.DataFrame(comparison_data)
