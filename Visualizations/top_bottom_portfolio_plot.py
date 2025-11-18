@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 from src.market_object import MarketObject
 import math
 import pandas as pd
@@ -66,8 +67,9 @@ def plot_top_bottom_percent(rdata,
     if percent == 100:
         show_bottom = False
 
+    # default to a realistic AUM so plots show dollar scales (matches upstream n_graph)
     if initial_investment is None:
-        initial_investment = 1.0
+        initial_investment = 1000000.0
 
     # thresholds for helpful runtime warnings (small cohorts)
     MIN_COHORT_WARNING = 3
@@ -351,14 +353,16 @@ def plot_top_bottom_percent(rdata,
                 benchmark_values.append(benchmark_values[-1] * (1 + to_decimal(r)))
 
     # Plot
-    plt.figure(figsize=(10, 6))
-    plt.plot(years, top_values, marker='o', linestyle='-', color='g', label=f'Top {percent}%')
+    plt.figure(figsize=(11, 5))
+    ax = plt.gca()
+    # Plot top cohort
+    plt.plot(years, top_values, marker='o', linestyle='-', color='g', label=f'Top {percent}%', linewidth=1.6, markersize=6)
     if show_bottom and bottom_values is not None:
         # Plot bottom cohort normally so both series start at the same initial investment
         # and the bottom line will go down when the cohort loses value (e.g., < initial_investment).
-        plt.plot(years, bottom_values, marker='o', linestyle='-', color='m', label=f'Bottom {percent}%')
+        plt.plot(years, bottom_values, marker='o', linestyle='-', color='m', label=f'Bottom {percent}%', linewidth=1.6, markersize=6)
     if benchmark_values is not None and len(benchmark_values) == len(years):
-        plt.plot(years, benchmark_values, marker='s', linestyle='--', color='r', label=benchmark_label)
+        plt.plot(years, benchmark_values, marker='s', linestyle='--', color='r', label=benchmark_label, linewidth=1.2)
 
     # Optionally plot a baseline portfolio growth series (from portfolio_growth_plot)
     if baseline_portfolio_values is None and rebalance_portfolio is not None:
@@ -377,10 +381,10 @@ def plot_top_bottom_percent(rdata,
         try:
             bp = list(baseline_portfolio_values)
             if len(bp) == len(years):
-                plt.plot(years, bp, marker='o', linestyle='-', color='b', label='Portfolio')
+                plt.plot(years, bp, marker='o', linestyle='-', color='b', label='Portfolio', linewidth=1.6, markersize=6)
             else:
                 common_len = min(len(years), len(bp))
-                plt.plot(years[:common_len], bp[:common_len], marker='o', linestyle='-', color='b', label='Portfolio')
+                plt.plot(years[:common_len], bp[:common_len], marker='o', linestyle='-', color='b', label='Portfolio', linewidth=1.6, markersize=6)
         except Exception:
             pass
 
@@ -392,7 +396,17 @@ def plot_top_bottom_percent(rdata,
     plt.title(f"Top/Bottom {percent}% Portfolios ({factor_set_name}) vs {benchmark_label}")
     plt.xlabel('Year')
     plt.ylabel('Dollar Invested ($)')
-    plt.grid(True)
+    plt.grid(True, linestyle='--', linewidth=0.5, alpha=0.7)
+    # ensure x-ticks are the years provided
+    try:
+        ax.set_xticks(years)
+    except Exception:
+        plt.xticks(years)
+    # format y-axis as dollars
+    try:
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'${x:,.0f}'))
+    except Exception:
+        pass
     # show initial investment baseline for reference
     try:
         plt.axhline(initial_investment, color='k', linestyle=':', linewidth=0.8)
@@ -418,7 +432,7 @@ def plot_top_bottom_percent(rdata,
     #         except Exception:
     #             pass
 
-    plt.legend()
+    plt.legend(loc='upper left')
     plt.tight_layout()
     
     # Return the figure for Streamlit instead of calling plt.show()
