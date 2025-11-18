@@ -307,11 +307,11 @@ def main():
         st.subheader("Initial Investment")
         initial_aum = st.number_input(
             "Initial AUM ($)",
-            min_value=1.0,
+            min_value=0.0,
             max_value=1000000000.0,
-            value=1000000.0,
-            step=100000.0,
-            format="%.2f",
+            value=1000.0,
+            step=100.0,
+            format="%.0f",
             help="Starting portfolio value in dollars"
         )
         st.write("---")
@@ -408,6 +408,13 @@ def main():
                             lambda x: x.split('-')[0].strip()
                         )
                         rdata['Year'] = pd.to_datetime(rdata['Date']).dt.year
+
+                        # If the user selected an analysis period, filter the loaded data to that range
+                        try:
+                            rdata = rdata[(rdata['Year'] >= int(start_year)) & (rdata['Year'] <= int(end_year))]
+                        except Exception:
+                            # If filtering fails, keep full dataset but warn the user
+                            st.warning('Unable to filter loaded data by selected years; using full dataset instead.')
 
                         # Keep only relevant columns (include Market Capitalization for cap-weighted portfolios)
                         cols_to_keep = ['Ticker', 'Year']
@@ -587,11 +594,45 @@ def main():
                         try:
                             # Get factor objects
                             factor_objects = [FACTOR_MAP[name] for name in st.session_state.selected_factors]
-                            
-                            # Get years from results
+
+                            # Get years from results (ensure user re-runs analysis after changing the period)
                             analysis_years = results['years']
-                            
-                            # Create the plot
+
+                            # First pass: get diagnostics to understand selection and dropped tickers
+                            details = plot_top_bottom_percent(
+                                rdata=st.session_state.rdata,
+                                factors=factor_objects,
+                                years=analysis_years,
+                                percent=cohort_pct,
+                                show_bottom=show_bottom_cohort,
+                                restrict_fossil_fuels=st.session_state.restrict_ff,
+                                benchmark_returns=results.get('benchmark_returns'),
+                                benchmark_label='Russell 2000',
+                                initial_investment=st.session_state.initial_aum,
+                                verbose=False,
+                                baseline_portfolio_values=results['portfolio_values'],
+                                use_rebalance_for_selection=True,
+                                return_details=True
+                            )
+
+                            # If diagnostics are available, show a concise summary to the user
+                            if isinstance(details, dict) and 'per_year' in details and details['per_year']:
+                                last = details['per_year'][-1]
+                                summary = {
+                                    'year': last.get('year'),
+                                    'top_n_selected': last.get('top', {}).get('n_selected'),
+                                    'top_start': last.get('top', {}).get('start'),
+                                    'top_end': last.get('top', {}).get('end'),
+                                    'bottom_n_selected': last.get('bottom', {}).get('n_selected') if last.get('bottom') else None,
+                                    'bottom_start': last.get('bottom', {}).get('start') if last.get('bottom') else None,
+                                    'bottom_end': last.get('bottom', {}).get('end') if last.get('bottom') else None,
+                                }
+                                st.write("**Cohort Diagnostics (final year)**")
+                                st.json(summary)
+                            else:
+                                st.info("Cohort diagnostics not available; proceeding to render chart.")
+
+                            # Second pass: generate and display the figure
                             fig_cohort = plot_top_bottom_percent(
                                 rdata=st.session_state.rdata,
                                 factors=factor_objects,
@@ -604,14 +645,14 @@ def main():
                                 initial_investment=st.session_state.initial_aum,
                                 verbose=False,
                                 baseline_portfolio_values=results['portfolio_values'],
-                                use_rebalance_for_selection=True
+                                use_rebalance_for_selection=True,
+                                return_details=False
                             )
-                            
-                            # Display the figure
+
                             if fig_cohort is not None:
                                 st.pyplot(fig_cohort)
                                 st.success(f"Cohort analysis complete! Comparing top {cohort_pct}% vs bottom {cohort_pct}% cohorts.")
-                            
+
                         except Exception as e:
                             st.error(f"Error generating cohort analysis: {str(e)}")
                             if verbosity_level >= 2:
