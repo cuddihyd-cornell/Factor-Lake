@@ -615,58 +615,76 @@ def main():
                                 return_details=True
                             )
 
-                            # If diagnostics are available, show a concise summary to the user
+                            # Instead of showing raw diagnostics JSON, present concise metrics:
+                            # final AUM and percent gain for Top and Bottom cohorts (final year).
+                            top_start = top_end = bot_start = bot_end = None
+                            # Extract numbers from details if present
                             if isinstance(details, dict) and 'per_year' in details and details['per_year']:
                                 last = details['per_year'][-1]
-                                summary = {
-                                    'year': last.get('year'),
-                                    'top_n_selected': last.get('top', {}).get('n_selected'),
-                                    'top_start': last.get('top', {}).get('start'),
-                                    'top_end': last.get('top', {}).get('end'),
-                                    'bottom_n_selected': last.get('bottom', {}).get('n_selected') if last.get('bottom') else None,
-                                    'bottom_start': last.get('bottom', {}).get('start') if last.get('bottom') else None,
-                                    'bottom_end': last.get('bottom', {}).get('end') if last.get('bottom') else None,
-                                }
-                                st.write("**Cohort Diagnostics (final year)**")
-                                st.json(summary)
+                                top = last.get('top', {})
+                                bot = last.get('bottom', {})
+                                top_start = top.get('start')
+                                top_end = top.get('end')
+                                bot_start = bot.get('start') if bot else None
+                                bot_end = bot.get('end') if bot else None
                             else:
-                                # Fallback: try inline selection diagnostics (non-rebalance) which
-                                # is more verbose and may succeed when rebalance-driven diagnostics
-                                # couldn't be constructed. This helps surface why cohorts are empty.
+                                # Fallback: call rebalance_portfolio directly to compute top/bottom series
                                 try:
-                                    inline_details = plot_top_bottom_percent(
-                                        rdata=st.session_state.rdata,
-                                        factors=factor_objects,
-                                        years=analysis_years,
-                                        percent=cohort_pct,
-                                        show_bottom=show_bottom_cohort,
+                                    res_top = rebalance_portfolio(
+                                        st.session_state.rdata,
+                                        factor_objects,
+                                        start_year=analysis_years[0],
+                                        end_year=analysis_years[-1],
+                                        initial_aum=st.session_state.initial_aum,
+                                        verbosity=0,
                                         restrict_fossil_fuels=st.session_state.restrict_ff,
-                                        benchmark_returns=results.get('benchmark_returns'),
-                                        benchmark_label='Russell 2000',
-                                        initial_investment=st.session_state.initial_aum,
-                                        verbose=False,
-                                        baseline_portfolio_values=results['portfolio_values'],
-                                        use_rebalance_for_selection=False,
-                                        return_details=True
+                                        top_pct=cohort_pct,
+                                        which='top'
                                     )
-                                    if isinstance(inline_details, dict) and 'per_year' in inline_details and inline_details['per_year']:
-                                        last = inline_details['per_year'][-1]
-                                        summary = {
-                                            'year': last.get('year'),
-                                            'top_n_selected': last.get('top', {}).get('n_selected'),
-                                            'top_start': last.get('top', {}).get('start'),
-                                            'top_end': last.get('top', {}).get('end'),
-                                            'bottom_n_selected': last.get('bottom', {}).get('n_selected') if last.get('bottom') else None,
-                                            'bottom_start': last.get('bottom', {}).get('start') if last.get('bottom') else None,
-                                            'bottom_end': last.get('bottom', {}).get('end') if last.get('bottom') else None,
-                                        }
-                                        st.write("**Cohort Diagnostics (final year — inline selection)**")
-                                        st.json(summary)
-                                        details = inline_details
-                                    else:
-                                        st.info("Cohort diagnostics not available; proceeding to render chart.")
+                                    res_bot = rebalance_portfolio(
+                                        st.session_state.rdata,
+                                        factor_objects,
+                                        start_year=analysis_years[0],
+                                        end_year=analysis_years[-1],
+                                        initial_aum=st.session_state.initial_aum,
+                                        verbosity=0,
+                                        restrict_fossil_fuels=st.session_state.restrict_ff,
+                                        top_pct=cohort_pct,
+                                        which='bottom'
+                                    ) if show_bottom_cohort else None
+                                    if isinstance(res_top, dict) and 'portfolio_values' in res_top:
+                                        tv = list(res_top.get('portfolio_values', []))
+                                        if len(tv) >= 2:
+                                            top_start = tv[-2]
+                                            top_end = tv[-1]
+                                        elif len(tv) == 1:
+                                            top_start = top_end = tv[0]
+                                    if res_bot and isinstance(res_bot, dict) and 'portfolio_values' in res_bot:
+                                        bv = list(res_bot.get('portfolio_values', []))
+                                        if len(bv) >= 2:
+                                            bot_start = bv[-2]
+                                            bot_end = bv[-1]
+                                        elif len(bv) == 1:
+                                            bot_start = bot_end = bv[0]
                                 except Exception:
-                                    st.info("Cohort diagnostics not available; proceeding to render chart.")
+                                    pass
+
+                            # Display simple metrics
+                            col_top, col_bot = st.columns([1, 1])
+                            with col_top:
+                                if top_end is not None:
+                                    pct = ((top_end / (top_start or top_end)) - 1) * 100 if (top_start and top_start > 0) else 0.0
+                                    st.metric(f"Top {cohort_pct}% Final Value", f"${top_end:,.2f}")
+                                    st.write(f"Top {cohort_pct}% % Gain (final year): {pct:.2f}%")
+                                else:
+                                    st.write(f"Top {cohort_pct}%: no final AUM available")
+                            with col_bot:
+                                if bot_end is not None:
+                                    pctb = ((bot_end / (bot_start or bot_end)) - 1) * 100 if (bot_start and bot_start > 0) else 0.0
+                                    st.metric(f"Bottom {cohort_pct}% Final Value", f"${bot_end:,.2f}")
+                                    st.write(f"Bottom {cohort_pct}% % Gain (final year): {pctb:.2f}%")
+                                else:
+                                    st.write(f"Bottom {cohort_pct}%: no final AUM available")
 
                             # Second pass: generate and display the figure
                             fig_cohort = plot_top_bottom_percent(
