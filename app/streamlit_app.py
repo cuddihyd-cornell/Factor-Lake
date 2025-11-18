@@ -630,7 +630,43 @@ def main():
                                 st.write("**Cohort Diagnostics (final year)**")
                                 st.json(summary)
                             else:
-                                st.info("Cohort diagnostics not available; proceeding to render chart.")
+                                # Fallback: try inline selection diagnostics (non-rebalance) which
+                                # is more verbose and may succeed when rebalance-driven diagnostics
+                                # couldn't be constructed. This helps surface why cohorts are empty.
+                                try:
+                                    inline_details = plot_top_bottom_percent(
+                                        rdata=st.session_state.rdata,
+                                        factors=factor_objects,
+                                        years=analysis_years,
+                                        percent=cohort_pct,
+                                        show_bottom=show_bottom_cohort,
+                                        restrict_fossil_fuels=st.session_state.restrict_ff,
+                                        benchmark_returns=results.get('benchmark_returns'),
+                                        benchmark_label='Russell 2000',
+                                        initial_investment=st.session_state.initial_aum,
+                                        verbose=False,
+                                        baseline_portfolio_values=results['portfolio_values'],
+                                        use_rebalance_for_selection=False,
+                                        return_details=True
+                                    )
+                                    if isinstance(inline_details, dict) and 'per_year' in inline_details and inline_details['per_year']:
+                                        last = inline_details['per_year'][-1]
+                                        summary = {
+                                            'year': last.get('year'),
+                                            'top_n_selected': last.get('top', {}).get('n_selected'),
+                                            'top_start': last.get('top', {}).get('start'),
+                                            'top_end': last.get('top', {}).get('end'),
+                                            'bottom_n_selected': last.get('bottom', {}).get('n_selected') if last.get('bottom') else None,
+                                            'bottom_start': last.get('bottom', {}).get('start') if last.get('bottom') else None,
+                                            'bottom_end': last.get('bottom', {}).get('end') if last.get('bottom') else None,
+                                        }
+                                        st.write("**Cohort Diagnostics (final year — inline selection)**")
+                                        st.json(summary)
+                                        details = inline_details
+                                    else:
+                                        st.info("Cohort diagnostics not available; proceeding to render chart.")
+                                except Exception:
+                                    st.info("Cohort diagnostics not available; proceeding to render chart.")
 
                             # Second pass: generate and display the figure
                             fig_cohort = plot_top_bottom_percent(
