@@ -69,8 +69,9 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False, top_pct
     
     if use_market_cap_weight:
         # Market capitalization-based weighting (similar to Russell 2000)
-        # Get market cap for each selected ticker
+        # Collect market cap and price for each selected ticker, then allocate
         market_caps = {}
+        prices = {}
         for ticker, _ in selected:
             # Try to get market cap from the data
             if 'Market Capitalization' in market.stocks.columns:
@@ -82,38 +83,55 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False, top_pct
                         market_caps[ticker] = float(market_cap)
                 except (KeyError, IndexError):
                     pass
-        
-        # If we have market caps, use them for weighting
-        if market_caps:
-            total_market_cap = sum(market_caps.values())
-            
-            for ticker, _ in selected:
-                if ticker in market_caps:
-                    # Weight by market cap: (ticker_market_cap / total_market_cap) * AUM
-                    weight = market_caps[ticker] / total_market_cap
-                    dollar_investment = weight * aum
-                    
+            # also capture entry price availability
+            price = market.get_price(ticker)
+            if price is not None and price > 0:
+                prices[ticker] = price
+
+        # If we have market caps and at least one valid price, use them for weighting
+        valid_caps = {t: c for t, c in market_caps.items() if t in prices}
+        if valid_caps:
+            total_market_cap = sum(valid_caps.values())
+            for ticker, cap in valid_caps.items():
+                # Weight by market cap: (ticker_market_cap / total_market_cap) * AUM
+                weight = cap / total_market_cap if total_market_cap > 0 else 0
+                dollar_investment = weight * aum
+                price = prices.get(ticker)
+                if price is not None and price > 0 and dollar_investment > 0:
+                    shares = dollar_investment / price
+                    portfolio_new.add_investment(ticker, shares)
+            # If for some reason no shares were added (e.g., rounding), fallback to equal among priced tickers
+            if not portfolio_new.investments and prices:
+                valid_tickers = list(prices.keys())
+                equal_investment = aum / len(valid_tickers)
+                for t in valid_tickers:
+                    shares = equal_investment / prices[t]
+                    portfolio_new.add_investment(t, shares)
+        else:
+            # Fallback to equal weighting among tickers that have valid prices
+            valid_tickers = [t for t, _ in selected if market.get_price(t) is not None and market.get_price(t) > 0]
+            if not valid_tickers:
+                print(f"Warning: No valid priced tickers for year {market.t}; returning empty portfolio.")
+            else:
+                equal_investment = aum / len(valid_tickers)
+                for ticker in valid_tickers:
                     price = market.get_price(ticker)
                     if price is not None and price > 0:
-                        shares = dollar_investment / price
+                        shares = equal_investment / price
                         portfolio_new.add_investment(ticker, shares)
+    else:
+        # Equal dollar weighting (allocate only to tickers with valid entry prices)
+        valid_tickers = [t for t, _ in selected if market.get_price(t) is not None and market.get_price(t) > 0]
+        if not valid_tickers and selected:
+            # nothing priced; warn and return empty portfolio
+            print(f"Warning: No valid priced tickers for equal-weighting in year {market.t}; returning empty portfolio.")
         else:
-            # Fallback to equal weighting if market cap data not available
-            print(f"Warning: Market Capitalization data not available for year {market.t}. Using equal weighting.")
-            equal_investment = aum / len(selected) if selected else 0
-            for ticker, _ in selected:
+            equal_investment = aum / len(valid_tickers) if valid_tickers else 0
+            for ticker in valid_tickers:
                 price = market.get_price(ticker)
                 if price is not None and price > 0:
                     shares = equal_investment / price
                     portfolio_new.add_investment(ticker, shares)
-    else:
-        # Equal dollar weighting (original behavior)
-        equal_investment = aum / len(selected) if selected else 0
-        for ticker, _ in selected:
-            price = market.get_price(ticker)
-            if price is not None and price > 0:
-                shares = equal_investment / price
-                portfolio_new.add_investment(ticker, shares)
 
     return portfolio_new
 
