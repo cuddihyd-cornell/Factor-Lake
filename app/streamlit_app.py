@@ -580,11 +580,11 @@ def main():
                 with col1:
                     cohort_pct = st.slider(
                         "Select Cohort Percentage",
-                        min_value=5,
-                        max_value=50,
+                        min_value=1,
+                        max_value=100,
                         value=10,
-                        step=5,
-                        help="Percentage of stocks to include in top/bottom cohorts"
+                        step=1,
+                        help="Percentage of stocks to include in top/bottom cohorts (1-100%)"
                     )
                 with col2:
                     show_bottom_cohort = st.checkbox("Show Bottom Cohort", value=True, help="Display the bottom-performing cohort")
