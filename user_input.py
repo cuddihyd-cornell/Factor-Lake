@@ -69,5 +69,49 @@ def get_factors(available_factors):
             case _:
                 print(f"factor {name} is not available.")
     
-    return factors
+    # After selecting factors, optionally gather top/bottom options immediately
+    tb_opts = get_top_bottom_options([name for _, name in factors]) if factors else None
+    return factors, tb_opts
+
+
+def get_top_bottom_options(selected_factor_names):
+    """
+    Ask the user if they'd like to plot top/bottom N% portfolios and gather options.
+
+    Returns:
+        None if user doesn't want the plot, otherwise a dict with keys:
+        - percent (int)
+        - show_bottom (bool)
+        - chosen_index (int) index into selected_factor_names
+    """
+    if not selected_factor_names:
+        print("No selected factors available for top/bottom analysis.")
+        return None
+
+    resp = input("Would you like to plot Top/Bottom N% portfolios for a factor? (y/n): ").strip().lower()
+    if resp not in ('y', 'yes'):
+        return None
+
+    # Percent input
+    while True:
+        try:
+            print("*DISCLAIMER*: When N selected as 10%, Top 10% will not be visible due to the fact that the portfolio's plot only takes into account the top 10% of the portfolio.")
+            pct = int(input("Enter percentage N (1-100) for Top/Bottom selection (e.g. 10): "))
+            if pct < 1 or pct > 100:
+                raise ValueError
+            break
+        except ValueError:
+            print("Please enter an integer between 1 and 100.")
+
+    show_bottom = False
+    if pct < 100:
+        sb = input(f"Also show Bottom {pct}%? (y/n): ").strip().lower()
+        show_bottom = sb in ('y', 'yes')
+
+    # We will analyze the combined ranking across ALL selected factors
+    # (no need to choose a single factor)
+    return {
+        'percent': pct,
+        'show_bottom': show_bottom
+    }
     
