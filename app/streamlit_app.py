@@ -123,9 +123,11 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
     
-    /* Sidebar */
+    /* Sidebar (configuration panel) - warm Cayuga accent */
     [data-testid="stSidebar"] {
-        background-color: #f8f9fa;
+        background-color: #fff6f6; /* warm cream */
+        border-left: 4px solid #B31B1B; /* thin carnelian accent */
+        padding-left: 8px;
     }
     
     [data-testid="stSidebar"] h2 {
