@@ -105,6 +105,121 @@ def plot_top_bottom_percent(rdata,
         except Exception:
             # fallback to inline selection logic below
             skip_inline_selection = False
+        # If caller requested diagnostics, build a concise final-year diagnostics
+        # even when using the rebalance-driven selection. The rebalance result
+        # contains portfolio dollar series but not per-year selection details,
+        # so we inspect the market for the final rebalancing year to compute
+        # n_selected and dropped counts while using the rebalance dollar
+        # series for start/end values.
+        if skip_inline_selection and return_details:
+            try:
+                # determine the final year pair (year -> next_year) used for returns
+                if len(years) >= 2:
+                    diag_year = years[-2]
+                    diag_next = years[-1]
+                else:
+                    diag_year = years[0]
+                    diag_next = years[0]
+
+                market = MarketObject(rdata.loc[rdata['Year'] == diag_year], diag_year)
+                next_market = MarketObject(rdata.loc[rdata['Year'] == diag_next], diag_next)
+
+                # helper to compute selection counts and dropped tickers for a cohort
+                def compute_cohort_stats(is_top: bool):
+                    universe = 0
+                    n_selected = 0
+                    dropped = 0
+                    for factor in factors:
+                        col = getattr(factor, 'column_name', str(factor))
+                        if col in market.stocks.columns:
+                            series = pd.to_numeric(market.stocks[col], errors='coerce')
+                            grouped = series.groupby(series.index).mean().dropna()
+                            higher_is_better = FACTOR_DOCS.get(col, {}).get('higher_is_better', True)
+                            items = []
+                            for t, v in grouped.items():
+                                try:
+                                    val = float(v)
+                                except Exception:
+                                    continue
+                                score = val if higher_is_better else -val
+                                items.append((t, score))
+                        else:
+                            items = []
+                            for t in market.stocks.index:
+                                try:
+                                    v = factor.get(t, market)
+                                except Exception:
+                                    v = None
+                                if v is None:
+                                    continue
+                                try:
+                                    items.append((t, float(v)))
+                                except Exception:
+                                    continue
+                        # sort worst->best
+                        items = sorted(items, key=lambda x: (x[1], x[0]))
+                        universe += len(items)
+                        n = max(1, math.floor(len(items) * (percent / 100.0))) if items else 0
+                        n_selected += n
+                        if n:
+                            if is_top:
+                                sel = [t for t, _ in items[-n:]]
+                            else:
+                                sel = [t for t, _ in items[:n]]
+                            # count dropped due to missing next-year prices (if configured)
+                            valid = []
+                            for t in sel:
+                                entry = market.get_price(t)
+                                if entry is None or entry <= 0:
+                                    continue
+                                exit_price = next_market.get_price(t)
+                                if exit_price is None and drop_missing_next_price:
+                                    continue
+                                valid.append(t)
+                            dropped += (len(sel) - len(valid))
+                    return {'n_selected': n_selected, 'dropped': dropped}
+
+                top_stats = compute_cohort_stats(True)
+                bot_stats = compute_cohort_stats(False) if show_bottom else None
+
+                # use rebalance dollar series for start/end values when available
+                top_start = None
+                top_end = None
+                bot_start = None
+                bot_end = None
+                try:
+                    if res_top and isinstance(res_top, dict) and 'portfolio_values' in res_top:
+                        tv = list(res_top.get('portfolio_values', []))
+                        if len(tv) >= 2:
+                            top_start = tv[-2]
+                            top_end = tv[-1]
+                        elif len(tv) == 1:
+                            top_start = tv[0]
+                            top_end = tv[0]
+                except Exception:
+                    pass
+                try:
+                    if show_bottom and res_bot and isinstance(res_bot, dict) and 'portfolio_values' in res_bot:
+                        bv = list(res_bot.get('portfolio_values', []))
+                        if len(bv) >= 2:
+                            bot_start = bv[-2]
+                            bot_end = bv[-1]
+                        elif len(bv) == 1:
+                            bot_start = bv[0]
+                            bot_end = bv[0]
+                except Exception:
+                    pass
+
+                details = {'years': [diag_year], 'per_year': []}
+                per_year = {'year': diag_year,
+                            'combined_scores': [],
+                            'top': {'positions': [], 'avg_return': None, 'start': top_start, 'end': top_end, 'dropped': top_stats['dropped'], 'n_selected': top_stats['n_selected']},
+                            'bottom': {'positions': [], 'avg_return': None, 'start': bot_start, 'end': bot_end, 'dropped': bot_stats['dropped'] if bot_stats else 0, 'n_selected': bot_stats['n_selected'] if bot_stats else 0}
+                            }
+                details['per_year'].append(per_year)
+            except Exception:
+                # if diagnostics construction fails, return minimal details=None
+                details = None
 
     # initialize variables used by both inline and rebalance-driven selection paths
     sorted_combined_scores = []
