@@ -669,20 +669,86 @@ def main():
                                 except Exception:
                                     pass
 
-                            # Display simple metrics
+                            # Display overall growth metrics (start -> finish) for Top/Bottom using rebalance results
+                            try:
+                                # Compute top/bottom rebalance series to get full portfolio values
+                                res_top = rebalance_portfolio(
+                                    st.session_state.rdata,
+                                    factor_objects,
+                                    start_year=analysis_years[0],
+                                    end_year=analysis_years[-1],
+                                    initial_aum=st.session_state.initial_aum,
+                                    verbosity=0,
+                                    restrict_fossil_fuels=st.session_state.restrict_ff,
+                                    top_pct=cohort_pct,
+                                    which='top'
+                                )
+                            except Exception:
+                                res_top = None
+                            try:
+                                res_bot = None
+                                if show_bottom_cohort:
+                                    res_bot = rebalance_portfolio(
+                                        st.session_state.rdata,
+                                        factor_objects,
+                                        start_year=analysis_years[0],
+                                        end_year=analysis_years[-1],
+                                        initial_aum=st.session_state.initial_aum,
+                                        verbosity=0,
+                                        restrict_fossil_fuels=st.session_state.restrict_ff,
+                                        top_pct=cohort_pct,
+                                        which='bottom'
+                                    )
+                            except Exception:
+                                res_bot = None
+
+                            # helper to compute metrics from rebalance result
+                            def cohort_metrics(res):
+                                if not res or 'portfolio_values' not in res:
+                                    return None
+                                vals = list(res.get('portfolio_values', []))
+                                if not vals:
+                                    return None
+                                start = vals[0]
+                                end = vals[-1]
+                                total_return = ((end / start) - 1) * 100 if start and start > 0 else 0.0
+                                years_n = len(results['years']) if 'years' in results else max(1, len(analysis_years))
+                                try:
+                                    cagr = (((end / start) ** (1 / years_n)) - 1) * 100 if start and start > 0 else 0.0
+                                except Exception:
+                                    cagr = 0.0
+                                return {'start': start, 'end': end, 'total_return': total_return, 'cagr': cagr}
+
+                            top_metrics = cohort_metrics(res_top)
+                            bot_metrics = cohort_metrics(res_bot) if res_bot is not None else None
+
+                            # compute benchmark final for alpha calc
+                            benchmark_final = None
+                            if 'benchmark_returns' in results and results['benchmark_returns']:
+                                try:
+                                    benchmark_final = st.session_state.initial_aum * np.prod([1 + r/100 for r in results['benchmark_returns']])
+                                except Exception:
+                                    benchmark_final = None
+
                             col_top, col_bot = st.columns([1, 1])
                             with col_top:
-                                if top_end is not None:
-                                    pct = ((top_end / (top_start or top_end)) - 1) * 100 if (top_start and top_start > 0) else 0.0
-                                    st.metric(f"Top {cohort_pct}% Final Value", f"${top_end:,.2f}")
-                                    st.write(f"Top {cohort_pct}% % Gain (final year): {pct:.2f}%")
+                                if top_metrics:
+                                    st.metric(f"Top {cohort_pct}% Final Value", f"${top_metrics['end']:,.2f}")
+                                    st.metric(f"Top {cohort_pct}% Total Return", f"{top_metrics['total_return']:.2f}%")
+                                    st.metric(f"Top {cohort_pct}% CAGR", f"{top_metrics['cagr']:.2f}%")
+                                    if benchmark_final is not None:
+                                        alpha_top = ((top_metrics['end'] / benchmark_final) - 1) * 100
+                                        st.metric(f"Top {cohort_pct}% Alpha vs Russell 2000", f"{alpha_top:.2f}%")
                                 else:
                                     st.write(f"Top {cohort_pct}%: no final AUM available")
                             with col_bot:
-                                if bot_end is not None:
-                                    pctb = ((bot_end / (bot_start or bot_end)) - 1) * 100 if (bot_start and bot_start > 0) else 0.0
-                                    st.metric(f"Bottom {cohort_pct}% Final Value", f"${bot_end:,.2f}")
-                                    st.write(f"Bottom {cohort_pct}% % Gain (final year): {pctb:.2f}%")
+                                if bot_metrics:
+                                    st.metric(f"Bottom {cohort_pct}% Final Value", f"${bot_metrics['end']:,.2f}")
+                                    st.metric(f"Bottom {cohort_pct}% Total Return", f"{bot_metrics['total_return']:.2f}%")
+                                    st.metric(f"Bottom {cohort_pct}% CAGR", f"{bot_metrics['cagr']:.2f}%")
+                                    if benchmark_final is not None:
+                                        alpha_bot = ((bot_metrics['end'] / benchmark_final) - 1) * 100
+                                        st.metric(f"Bottom {cohort_pct}% Alpha vs Russell 2000", f"{alpha_bot:.2f}%")
                                 else:
                                     st.write(f"Bottom {cohort_pct}%: no final AUM available")
 
