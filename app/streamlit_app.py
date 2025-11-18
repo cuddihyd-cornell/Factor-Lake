@@ -298,10 +298,37 @@ def main():
         # Date Range
         st.subheader("Analysis Period")
         col1, col2 = st.columns(2)
+        # Use number_input with steppers (+ / -) and integer formatting
         with col1:
-            start_year = st.number_input("Start Year", min_value=2002, max_value=2023, value=2002)
+            start_year = st.number_input(
+                "Start Year",
+                min_value=2002,
+                max_value=2023,
+                value=2002,
+                step=1,
+                format="%d",
+                key="start_year_input",
+                help="Select the first year for analysis (2002-2023)"
+            )
         with col2:
-            end_year = st.number_input("End Year", min_value=2002, max_value=2023, value=2023)
+            end_year = st.number_input(
+                "End Year",
+                min_value=2002,
+                max_value=2023,
+                value=2023,
+                step=1,
+                format="%d",
+                key="end_year_input",
+                help="Select the last year for analysis (2002-2023)"
+            )
+
+        # Ensure start_year <= end_year; auto-correct end year if needed
+        try:
+            if int(st.session_state.get('start_year_input', 2002)) > int(st.session_state.get('end_year_input', 2023)):
+                st.warning('Start Year was greater than End Year — adjusting End Year to match Start Year')
+                st.session_state['end_year_input'] = int(st.session_state['start_year_input'])
+        except Exception:
+            pass
         st.write("---")
         # Initial Investment
         st.subheader("Initial Investment")
