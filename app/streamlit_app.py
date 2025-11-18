@@ -592,8 +592,8 @@ def main():
                 if st.button("Generate Top/Bottom Analysis", key="top_bottom_btn"):
                     with st.spinner("Generating cohort analysis..."):
                         try:
-                            # Get factor objects
-                            factor_objects = [FACTOR_MAP[name] for name in st.session_state.selected_factors]
+                            # Get factor objects (instantiate classes)
+                            factor_objects = [FACTOR_MAP[name]() for name in st.session_state.selected_factors]
 
                             # Get years from results (ensure user re-runs analysis after changing the period)
                             analysis_years = results['years']
