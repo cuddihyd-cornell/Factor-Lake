@@ -4,20 +4,8 @@ import numpy as np
 import pandas as pd
 from factors_doc import FACTOR_DOCS
 from factor_utils import normalize_series
-from typing import Literal
 
-# NEW: detect a market-cap column by common names
-def _find_mcap_column(df: pd.DataFrame) -> str | None:
-    """Try to find a reasonable market-cap column name."""
-    if df is None or df.empty:
-        return None
-    lower_map = {c.lower(): c for c in df.columns}
-    for cand in ["market_cap", "marketcap", "mktcap", "market cap", "mcap"]:
-        if cand in lower_map:
-            return lower_map[cand]
-    return None
 
-# CHANGED: add weighting + top_percent + echo_top for printing the Top-10% selection
 def calculate_holdings(factor, aum, market, restrict_fossil_fuels: bool = False,
                        use_mcap: bool = False,   # <--- NEW: True = market-cap weighting, False = equal-dollar
 ):
