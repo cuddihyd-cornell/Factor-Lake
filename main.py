@@ -1,7 +1,6 @@
 from market_object import load_data
 from calculate_holdings import rebalance_portfolio
 from user_input import get_factors
-from user_input import get_user_options
 from verbosity_options import get_verbosity_level
 from fossil_fuel_restriction import get_fossil_fuel_restriction
 from supabase_input import get_supabase_preference, get_data_loading_verbosity
@@ -10,11 +9,20 @@ from Visualizations.portfolio_growth_plot import plot_portfolio_growth
 import pandas as pd
 import matplotlib.pyplot as plt
 
+def ask_use_mcap() -> bool:
+    """Ask the user whether to use market-cap weighting or equal-dollar."""
+    while True:
+        ans = input("Use market-cap weighting? (y for market-cap, n for equal-dollar) [Y/N]: ").strip().lower()
+        if ans == "":
+            # default: No (equal)
+            return False
+        if ans in ("y", "yes","Y"):
+            return True
+        if ans in ("n", "no","N"):
+            return False
+        print("Please enter 'Y' or 'N'.")
+        
 def main():
-    opts = get_user_options()
-    weighting   = opts["weighting"]        # 'equal' or 'mcap'
-    top_percent = opts["top_percent"]      # float, default 10.0
-
     ### Ask about fossil fuel restriction first ###
     restrict_fossil_fuels = get_fossil_fuel_restriction()  # Prompt user (Yes/No)
 
@@ -26,6 +34,8 @@ def main():
     
     # Sector selection
     selected_sectors = get_sector_selection()
+
+    use_mcap = ask_use_mcap()
 
     # Load market data
     rdata = load_data(
@@ -76,8 +86,7 @@ def main():
         initial_aum=1,
         verbosity=verbosity_level,
         restrict_fossil_fuels=restrict_fossil_fuels,
-        weighting=weighting,                # NEW
-        top_percent=top_percent,            # NEW
+       use_mcap=use_mcap,
     )
     
     # Plot portfolio growth
