@@ -63,7 +63,7 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels: bool = False,
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
 
     # -------- determine weights and allocate shares --------
-if use_mcap:
+    if use_mcap:
         # Supabase Market_Capitalization 
         mcap_col = "Market_Capitalization"
         if mcap_col not in market.stocks.columns:
