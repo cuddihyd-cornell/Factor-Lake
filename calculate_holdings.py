@@ -65,7 +65,7 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels: bool = False,
     # -------- determine weights and allocate shares --------
     if use_mcap:
         # Supabase Market_Capitalization 
-        mcap_col = "Market_Capitalization"
+        mcap_col = "Market Capitalization"
         if mcap_col not in market.stocks.columns:
             raise KeyError(
                 "Market-cap weighting requested but no market cap column found. "
