@@ -63,22 +63,25 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels: bool = False,
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
 
     # -------- determine weights and allocate shares --------
-    if use_mcap:
-        mcap_col = _find_mcap_column(market.stocks)
-        if mcap_col is None:
+if use_mcap:
+        # Supabase Market_Capitalization 
+        mcap_col = "Market_Capitalization"
+        if mcap_col not in market.stocks.columns:
             raise KeyError(
                 "Market-cap weighting requested but no market cap column found. "
-                "Looked for: market_cap, marketcap, mktcap, market cap, mcap."
             )
+
         mcap_series = (
             pd.to_numeric(market.stocks.loc[selected_tickers, mcap_col], errors="coerce")
-            .reindex(selected_tickers)
+              .reindex(selected_tickers)
         )
         mcap_series = mcap_series[(mcap_series > 0) & mcap_series.notna()]
+
         if mcap_series.empty:
             raise ValueError("Nonpositive or missing market caps for all selected tickers.")
+
         total_mcap = mcap_series.sum()
-        weights = (mcap_series / total_mcap)   # ticker -> weight
+        weights = (mcap_series / total_mcap)   # ticker weighted
 
         for ticker in selected_tickers:
             price = market.get_price(ticker)
@@ -91,7 +94,7 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels: bool = False,
             shares = invest_dollars / price
             portfolio_new.add_investment(ticker, shares)
     else:
-        # equal-dollar among selected names
+        # Top 10% 
         equal_investment = aum / len(selected_tickers)
         weights = pd.Series(1.0 / len(selected_tickers), index=selected_tickers)
         for ticker in selected_tickers:
