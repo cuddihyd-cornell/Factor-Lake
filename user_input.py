@@ -1,6 +1,4 @@
 import factor_function
-# add near existing argparse setup
-import argparse
 
 def get_factors(available_factors):
     # Display the lists of available factors with index
@@ -72,45 +70,7 @@ def get_factors(available_factors):
                 print(f"factor {name} is not available.")
     
     return factors
-    
-
-def build_parser():
-    parser = argparse.ArgumentParser(description="Factor-Lake runtime options")
-    # You can add other existing args here if you already had them.
-
-    # CHANGED: allow omission so we can prompt
-    parser.add_argument(
-        "--weighting",
-        choices=["equal", "mcap"],
-        help="Weighting scheme: 'equal' or 'mcap'. If omitted, you'll be prompted."
-    )
-    parser.add_argument(
-        "--top-percent",
-        type=float,
-        default=10.0,
-        help="Top percent of names to select (default: 10)."
-    )
-    parser.add_argument(
-        "--restrict-fossil-fuels",
-        action="store_true",
-        help="Exclude fossil-fuel industries from holdings if set."
-    )
-    parser.add_argument(
-        "--verbosity",
-        type=int,
-        default=1,
-        help="0=silent, 1=summary, 2=per-year logs, 3=debug"
-    )
-    return parser
-
-def get_user_options():
-    parser = build_parser()
-    args = parser.parse_args()
-
-    # NEW: interactive prompt if not provided on CLI
-    if args.weighting is None:
-        try:
-            ans = input("Use market-cap weighting? [y/N]: ").strip().lower()
+ket-cap weighting? [y/N]: ").strip().lower()
             weighting = "mcap" if ans in ("y", "yes") else "equal"
         except Exception:
             weighting = "equal"
