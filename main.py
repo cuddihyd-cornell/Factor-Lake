@@ -6,7 +6,6 @@ from fossil_fuel_restriction import get_fossil_fuel_restriction
 from supabase_input import get_supabase_preference, get_data_loading_verbosity
 from sector_selection import get_sector_selection
 from Visualizations.portfolio_growth_plot import plot_portfolio_growth
-from Visualizations.top_bottom_portfolio_plot import plot_top_bottom_percent
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -58,7 +57,7 @@ def main():
     rdata = rdata[cols_to_keep]
 
     ### Get user selections ###
-    factors, tb_opts = get_factors(available_factors)
+    factors = get_factors(available_factors)
     verbosity_level = get_verbosity_level()
 
     # Separate factor objects from their names for use downstream
@@ -84,25 +83,6 @@ def main():
         benchmark_label='Russell 2000',
         initial_investment=results.get('portfolio_values', [None])[0]
     )
-
-    # Optional: Top/Bottom N% analysis (tb_opts collected during factor selection)
-    if tb_opts:
-        # factor_objects may be empty if user didn't select factors; guard against that
-        if not factor_objects:
-            print("No factor objects available to run top/bottom analysis.")
-        else:
-            factor_list = list(factor_objects)
-            plot_top_bottom_percent(
-                rdata=rdata,
-                factors=factor_list,
-                years=results['years'],
-                percent=tb_opts['percent'],
-                show_bottom=tb_opts['show_bottom'],
-                restrict_fossil_fuels=restrict_fossil_fuels,
-                benchmark_returns=results.get('benchmark_returns'),
-                benchmark_label='Russell 2000',
-                initial_investment=results.get('portfolio_values', [None])[0]
-            )
 
 
 if __name__ == "__main__":
