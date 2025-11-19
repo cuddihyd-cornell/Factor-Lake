@@ -8,6 +8,7 @@ from typing import Literal
 
 # NEW: detect a market-cap column by common names
 def _find_mcap_column(df: pd.DataFrame) -> str | None:
+    """Try to find a reasonable market-cap column name."""
     if df is None or df.empty:
         return None
     lower_map = {c.lower(): c for c in df.columns}
@@ -16,11 +17,9 @@ def _find_mcap_column(df: pd.DataFrame) -> str | None:
             return lower_map[cand]
     return None
 
-Weighting = Literal["equal", "mcap"]
-
 # CHANGED: add weighting + top_percent + echo_top for printing the Top-10% selection
 def calculate_holdings(factor, aum, market, restrict_fossil_fuels: bool = False,
-                       weighting: Weighting = "equal", top_percent: float = 10.0, echo_top: bool = False,                  
+                       use_mcap: bool = False,   # <--- NEW: True = market-cap weighting, False = equal-dollar
 ):
      # Apply sector restrictions if enabled
     if restrict_fossil_fuels:
@@ -68,17 +67,21 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels: bool = False,
     sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
     
     # Select the top 10% of securities
-    k = max(1, int(len(sorted_securities) * (top_percent / 100.0)))   
+    k = max(1, len(sorted_securities) // 10)   # <- always top 10%
     top = sorted_securities[:k]
     selected_tickers = [t for t, _ in top]
 
     # compute display weights (for printing) and allocate shares
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
 
-    if weighting == "mcap":
+    # -------- determine weights and allocate shares --------
+    if use_mcap:
         mcap_col = _find_mcap_column(market.stocks)
         if mcap_col is None:
-            raise KeyError("Market-cap weighting requested but no market-cap column found.")
+            raise KeyError(
+                "Market-cap weighting requested but no market cap column found. "
+                "Looked for: market_cap, marketcap, mktcap, market cap, mcap."
+            )
         mcap_series = (
             pd.to_numeric(market.stocks.loc[selected_tickers, mcap_col], errors="coerce")
             .reindex(selected_tickers)
@@ -87,39 +90,37 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels: bool = False,
         if mcap_series.empty:
             raise ValueError("Nonpositive or missing market caps for all selected tickers.")
         total_mcap = mcap_series.sum()
-        disp_weights = (mcap_series / total_mcap)           # NEW: for printing
-        # allocate by cap weights
+        weights = (mcap_series / total_mcap)   # ticker -> weight
+
         for ticker in selected_tickers:
             price = market.get_price(ticker)
             if price is None or price <= 0:
                 continue
-            invest_dollars = aum * float(disp_weights.get(ticker, 0.0))
+            w = float(weights.get(ticker, 0.0))
+            invest_dollars = aum * w
             if invest_dollars <= 0:
                 continue
             shares = invest_dollars / price
             portfolio_new.add_investment(ticker, shares)
     else:
-        # equal-weight dollars among selected
+        # equal-dollar among selected names
         equal_investment = aum / len(selected_tickers)
-        disp_weights = pd.Series(1.0 / len(selected_tickers), index=selected_tickers)  # NEW: for printing
+        weights = pd.Series(1.0 / len(selected_tickers), index=selected_tickers)
         for ticker in selected_tickers:
             price = market.get_price(ticker)
             if price is not None and price > 0:
                 shares = equal_investment / price
                 portfolio_new.add_investment(ticker, shares)
-
-    # NEW: print Top-10% selection (or Top-{top_percent}% if you change it) and weights
-    if echo_top:
-        pct = int(top_percent)
-        print(f"\nYear {market.t} — Top {pct}% selection ({len(selected_tickers)} names), weighting={weighting}")
-        # nice compact table
-        to_show = pd.DataFrame({
-            "ticker": selected_tickers,
-            "weight": [float(disp_weights.get(t, 0.0)) for t in selected_tickers],
-        })
-        # ensure weights sum ~1 in print
-        print(to_show.to_string(index=False, formatters={"weight": "{:.6f}".format}))
-        print(f"Sum of weights: {to_show['weight'].sum():.6f}")
+# print top-10% and weights for this year 
+    print(f"\nYear {market.t} — Top 10% selection ({len(selected_tickers)} names)")
+    print(f"Weighting scheme: {'market-cap' if use_mcap else 'equal-dollar'}")
+    out_df = pd.DataFrame({
+        "ticker": selected_tickers,
+        "weight": [float(weights.get(t, 0.0)) for t in selected_tickers],
+    })
+    print(out_df.to_string(index=False, formatters={"weight": "{:.6f}".format}))
+    print(f"Sum of weights: {out_df['weight'].sum():.6f}")
+    
 
     return portfolio_new
 
@@ -159,8 +160,7 @@ def rebalance_portfolio(
     initial_aum,
     verbosity=None,
     restrict_fossil_fuels=False,
-    weighting: Weighting = "equal",        # NEW
-    top_percent: float = 10.0,             # NEW
+    use_mcap: bool = False,     # <--- NEW
 ):
     aum = initial_aum
     years = [start_year] # Start with the initial year
@@ -178,9 +178,7 @@ def rebalance_portfolio(
                 aum=aum / len(factors),
                 market=market,
                 restrict_fossil_fuels=restrict_fossil_fuels,
-                weighting=weighting,              # NEW
-                top_percent=top_percent,          # NEW
-                echo_top=(verbosity or 0) >= 1,   # NEW: print the Top-% table
+                use_mcap=use_mcap,   # <--- NEW: pass boolean from main()
             )
             yearly_portfolio.append(factor_portfolio)
 
