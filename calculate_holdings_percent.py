@@ -31,6 +31,7 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
         meta = FACTOR_DOCS.get(factor_col, {})
         higher_is_better = meta.get('higher_is_better', True)
         normed = normalize_series(raw_series, higher_is_better=higher_is_better)
+        # Use index as ticker if stocks_df index contains tickers
         factor_values = normed.dropna().to_dict()
     else:
         factor_values = {
@@ -39,19 +40,26 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
             if isinstance(factor.get(ticker, market), (int, float))
         }
 
+    # Filter out tickers without a valid positive price BEFORE selecting top/bottom
+    valid_factor_values = {}
+    for ticker, score in factor_values.items():
+        price = market.get_price(ticker)
+        if price is not None and price > 0:
+            valid_factor_values[ticker] = score
+
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
-    if len(factor_values) == 0:
+    if len(valid_factor_values) == 0:
         return portfolio_new
 
-    sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
-    count = max(1, int(round(len(sorted_securities) * float(n_percent) / 100.0)))
+    # sort by score descending (highest first)
+    sorted_desc = sorted(valid_factor_values.items(), key=lambda x: x[1], reverse=True)
+    count = max(1, int(round(len(sorted_desc) * float(n_percent) / 100.0)))
 
     if side == 'top':
-        # highest scores
-        selected = sorted_securities[:count]
-    else:  # 'bottom'
-        # explicitly take the lowest scores by sorting ascending and taking first `count`
-        sorted_asc = sorted(factor_values.items(), key=lambda x: x[1], reverse=False)
+        selected = sorted_desc[:count]
+    else:
+        # explicit ascending sort and take first `count` to ensure true bottoms
+        sorted_asc = sorted(valid_factor_values.items(), key=lambda x: x[1], reverse=False)
         selected = sorted_asc[:count]
 
     equal_investment = aum / len(selected)

@@ -7,9 +7,7 @@ from calculate_holdings_percent import calculate_holdings_percent
 def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum, n_percent=10, include_bottom=True, verbosity=None, restrict_fossil_fuels=False):
     """
     Run parallel backtests for top n% and (optionally) bottom n% using same inputs.
-    Returns a dict: {'top': {...}, 'bottom': {...} (if include_bottom), 'years': [...], 'benchmark_returns': [...], 'initial_aum': initial_aum}
-    Each side dict contains:
-      - final_value, yearly_returns (decimals), portfolio_values (AUM by year)
+    Returns benchmark_returns as DECIMALS (e.g., 0.12 for 12%) to match plotting helpers.
     """
     aum_top = initial_aum
     aum_bottom = initial_aum
@@ -20,24 +18,49 @@ def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum
     top_values = [initial_aum]
     bottom_values = [initial_aum]
 
-    for year in range(start_year, end_year):
-        market = MarketObject(data.loc[data['Year'] == year], year)
-        # build next market for growth calculation
-        next_market = MarketObject(data.loc[data['Year'] == (year + 1)], year + 1)
+    n_factors = len(factors) if factors is not None else 0
 
-        # build yearly portfolios (one portfolio per factor), split AUM equally across factors
+    for year in range(start_year, end_year):
+        cur_df = data.loc[data['Year'] == year]
+        next_df = data.loc[data['Year'] == (year + 1)]
+        market = MarketObject(cur_df, year)
+        next_market = MarketObject(next_df, year + 1)
+
         yearly_top = []
         yearly_bottom = []
-        per_factor_aum = aum_top / len(factors) if len(factors) else 0
-        # for bottom we split separately (use aum_bottom)
-        for factor in factors:
-            yearly_top.append(calculate_holdings_percent(factor, per_factor_aum, market, n_percent=n_percent, side='top', restrict_fossil_fuels=restrict_fossil_fuels))
-        if include_bottom:
-            per_factor_aum_b = aum_bottom / len(factors) if len(factors) else 0
-            for factor in factors:
-                yearly_bottom.append(calculate_holdings_percent(factor, per_factor_aum_b, market, n_percent=n_percent, side='bottom', restrict_fossil_fuels=restrict_fossil_fuels))
 
-        # compute growths
+        if n_factors == 0:
+            per_factor_aum_top = 0
+            per_factor_aum_bottom = 0
+        else:
+            per_factor_aum_top = aum_top / n_factors
+            per_factor_aum_bottom = aum_bottom / n_factors
+
+        for factor in factors:
+            yearly_top.append(
+                calculate_holdings_percent(
+                    factor,
+                    per_factor_aum_top,
+                    market,
+                    n_percent=n_percent,
+                    side='top',
+                    restrict_fossil_fuels=restrict_fossil_fuels
+                )
+            )
+
+        if include_bottom:
+            for factor in factors:
+                yearly_bottom.append(
+                    calculate_holdings_percent(
+                        factor,
+                        per_factor_aum_bottom,
+                        market,
+                        n_percent=n_percent,
+                        side='bottom',
+                        restrict_fossil_fuels=restrict_fossil_fuels
+                    )
+                )
+
         growth_top, start_top, end_top = calculate_growth(yearly_top, next_market, market)
         top_returns.append(growth_top)
         aum_top = end_top
@@ -54,11 +77,12 @@ def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum
         benchmark_returns.append(br)
         years.append(year + 1)
 
-    result: dict = {}
-    result['top'] = {
-        'final_value': aum_top,
-        'yearly_returns': top_returns,
-        'portfolio_values': top_values
+    result = {
+        'top': {
+            'final_value': aum_top,
+            'yearly_returns': top_returns,
+            'portfolio_values': top_values
+        }
     }
     if include_bottom:
         result['bottom'] = {
@@ -67,7 +91,10 @@ def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum
             'portfolio_values': bottom_values
         }
 
-    result['years'] = years
-    result['benchmark_returns'] = benchmark_returns
-    result['initial_aum'] = initial_aum
+    # Put non-portfolio scalars/lists into a metadata dict to keep result as dict[str, dict]
+    result['metadata'] = {
+        'years': years,
+        'benchmark_returns': benchmark_returns,
+        'initial_aum': initial_aum
+    }
     return result
