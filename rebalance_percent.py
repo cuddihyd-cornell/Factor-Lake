@@ -91,10 +91,9 @@ def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum
             'portfolio_values': bottom_values
         }
 
-    # Put non-portfolio scalars/lists into a metadata dict to keep result as dict[str, dict]
-    result['metadata'] = {
-        'years': years,
-        'benchmark_returns': benchmark_returns,
-        'initial_aum': initial_aum
-    }
+    # Always provide these keys so callers (main/plotters) do not KeyError.
+    result['years'] = years
+    # benchmark_returns are returned as decimals (e.g., 0.12 for 12%)
+    result['benchmark_returns'] = benchmark_returns
+    result['initial_aum'] = initial_aum
     return result

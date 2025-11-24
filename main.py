@@ -102,19 +102,37 @@ def main():
             restrict_fossil_fuels=restrict_fossil_fuels
         )
 
-        # Call the visualization with the same style as plot_portfolio_growth (named args)
-        plot_top_index_bottom(
-            years=percent_results['years'],
-            top_values=percent_results['top']['portfolio_values'],
-            bottom_values=percent_results.get('bottom', {}).get('portfolio_values', None),
-            portfolio_values=results.get('portfolio_values'),
-            selected_factors=list(factor_names),
-            restrict_fossil_fuels=restrict_fossil_fuels,
-            benchmark_returns=percent_results.get('benchmark_returns'),
-            top_label=f"Top {n_percent}%",
-            bottom_label=f"Bottom {n_percent}%",
-            initial_investment=percent_results.get('initial_aum', percent_results['top']['portfolio_values'][0])
-        )
+        # Defensive checks: ensure we have a dict and expected keys to avoid KeyError in Colab
+        if not isinstance(percent_results, dict):
+            raise RuntimeError("rebalance_portfolio_percent did not return a dict")
+
+        # If 'years' missing for some reason, synthesize from start_year and portfolio length
+        if 'years' not in percent_results or not percent_results.get('years'):
+            top_vals = percent_results.get('top', {}).get('portfolio_values', []) or []
+            # use the same start_year passed above (2002) to construct a contiguous list
+            if len(top_vals) > 0:
+                start_yr = 2002
+                percent_results['years'] = list(range(start_yr, start_yr + len(top_vals)))
+            else:
+                percent_results['years'] = []
+
+        # Ensure benchmark_returns exists (may be used by plotting); default to empty list
+        if 'benchmark_returns' not in percent_results:
+            percent_results['benchmark_returns'] = []
+
+         # Call the visualization with the same style as plot_portfolio_growth (named args)
+         plot_top_index_bottom(
+             years=percent_results['years'],
+             top_values=percent_results['top']['portfolio_values'],
+             bottom_values=percent_results.get('bottom', {}).get('portfolio_values', None),
+             portfolio_values=results.get('portfolio_values'),
+             selected_factors=list(factor_names),
+             restrict_fossil_fuels=restrict_fossil_fuels,
+             benchmark_returns=percent_results.get('benchmark_returns'),
+             top_label=f"Top {n_percent}%",
+             bottom_label=f"Bottom {n_percent}%",
+             initial_investment=percent_results.get('initial_aum', percent_results['top']['portfolio_values'][0])
+         )
 
 
 if __name__ == "__main__":
