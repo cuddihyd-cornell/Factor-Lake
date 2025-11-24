@@ -15,7 +15,10 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side="top", re
       - remove tickers with invalid/zero price BEFORE selecting
       - ensure at least min_holdings (3) if universe allows, to avoid over-concentration
     """
-    print(f"\n=== Calculating {side} {n_percent}% for {factor} (Year {market.t}) ===")
+    # Get factor name as string
+    factor_name = factor.name if hasattr(factor, 'name') else str(factor)
+    
+    print(f"\n=== Calculating {side} {n_percent}% for {factor_name} (Year {market.t}) ===")
     
     # Skip forward survivorship check for now - fix calculate_growth instead
     has_next_year = False
@@ -33,31 +36,31 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side="top", re
 
     # Get factor values for normalization
     factor_values = {}
-    if factor in stocks_df.columns:
-        raw_series = pd.to_numeric(stocks_df[factor], errors='coerce')
-        meta = FACTOR_DOCS.get(factor, {})
+    if factor_name in stocks_df.columns:
+        raw_series = pd.to_numeric(stocks_df[factor_name], errors='coerce')
+        meta = FACTOR_DOCS.get(factor_name, {})
         higher_is_better = meta.get('higher_is_better', True)
         
         # FORCE momentum factors to be higher_is_better=True (positive momentum = good)
-        if 'momentum' in factor.lower() or 'mom' in factor.lower():
+        if 'momentum' in factor_name.lower() or 'mom' in factor_name.lower():
             higher_is_better = True
-            print(f"[OVERRIDE] Forcing {factor} to higher_is_better=True")
+            print(f"[OVERRIDE] Forcing {factor_name} to higher_is_better=True")
             
         # Debug: print factor direction for momentum factors
-        if 'momentum' in factor.lower():
-            print(f"[DEBUG] Factor '{factor}': higher_is_better={higher_is_better}")
+        if 'momentum' in factor_name.lower():
+            print(f"[DEBUG] Factor '{factor_name}': higher_is_better={higher_is_better}")
             sample_raw = raw_series.dropna().head(5)
             print(f"[DEBUG] Sample raw values: {sample_raw.to_dict()}")
         
         normed = normalize_series(raw_series, higher_is_better=higher_is_better)
         
-        if 'momentum' in factor.lower():
+        if 'momentum' in factor_name.lower():
             sample_normed = normed.dropna().head(5)
             print(f"[DEBUG] Sample normalized values: {sample_normed.to_dict()}")
         
         factor_values = normed.dropna().to_dict()
 
-    # Filter out tickers without a valid positive price AND forward survivorship check
+    # Filter out tickers without a valid positive price
     valid_factor_values = {}
     survivorship_filtered = 0
     
@@ -70,22 +73,15 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side="top", re
             '.XX' in ticker or
             ticker.endswith('.PK')):
             continue
-            
-        # Forward survivorship check: ensure ticker survives to next year
-        if has_next_year:
-            next_price = next_market.get_price(ticker)
-            if next_price is None or next_price <= 0:
-                survivorship_filtered += 1
-                continue
                 
         valid_factor_values[ticker] = score
 
-    if 'momentum' in factor.lower():
+    if 'momentum' in factor_name.lower():
         removed_delisted = len(factor_values) - len(valid_factor_values) - survivorship_filtered
         if removed_delisted > 0:
-            print(f"[DEBUG] Filtered out {removed_delisted} delisted/inactive tickers from {factor}")
+            print(f"[DEBUG] Filtered out {removed_delisted} delisted/inactive tickers from {factor_name}")
         if survivorship_filtered > 0:
-            print(f"[DEBUG] Filtered out {survivorship_filtered} tickers due to forward survivorship from {factor}")
+            print(f"[DEBUG] Filtered out {survivorship_filtered} tickers due to forward survivorship from {factor_name}")
 
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
     if len(valid_factor_values) == 0:
@@ -107,18 +103,18 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side="top", re
     
     count = min(min_holdings, len(sorted_desc))  # Don't exceed universe size
     
-    if 'momentum' in factor.lower():
+    if 'momentum' in factor_name.lower():
         print(f"[DEBUG] Universe size: {len(sorted_desc)}, Target {n_percent}%: {target_count}, Actual: {count}")
 
     if side == 'top':
         selected = sorted_desc[:count]
-        if 'momentum' in factor.lower():
+        if 'momentum' in factor_name.lower():
             print(f"[DEBUG] TOP selected: {[f'{t}:{s:.3f}' for t,s in selected[:5]]}")
     else:
         # explicit ascending sort and take first `count` to ensure true bottoms
         sorted_asc = sorted(valid_factor_values.items(), key=lambda x: x[1], reverse=False)
         selected = sorted_asc[:count]
-        if 'momentum' in factor.lower():
+        if 'momentum' in factor_name.lower():
             print(f"[DEBUG] BOTTOM selected: {[f'{t}:{s:.3f}' for t,s in selected[:5]]}")
 
     equal_investment = aum / len(selected)
