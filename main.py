@@ -1,11 +1,13 @@
 from market_object import load_data
 from calculate_holdings import rebalance_portfolio
-from user_input import get_factors
+from user_input import get_factors, get_top_bottom_plot_choice
 from verbosity_options import get_verbosity_level
 from fossil_fuel_restriction import get_fossil_fuel_restriction
 from supabase_input import get_supabase_preference, get_data_loading_verbosity
 from sector_selection import get_sector_selection
 from Visualizations.portfolio_growth_plot import plot_portfolio_growth
+from Visualizations.portfolio_top_bottom_plot import plot_top_index_bottom
+from rebalance_percent import rebalance_portfolio_percent
 import pandas as pd
 import matplotlib.pyplot as plt
 
@@ -64,7 +66,6 @@ def main():
     factor_objects, factor_names = (zip(*factors) if factors else ([], []))
 
     ### Rebalancing portfolio across years ###
-    # ...existing code...
     results = rebalance_portfolio(
         rdata, list(factor_objects),
         start_year=2002, end_year=2023,
@@ -83,6 +84,33 @@ def main():
         benchmark_label='Russell 2000',
         initial_investment=results.get('portfolio_values', [None])[0]
     )
+
+    # Top/Bottom n% plotting driven by user_input module
+    plot_choice, n_percent, include_bottom = get_top_bottom_plot_choice(default_n=10)
+    if plot_choice:
+        percent_results = rebalance_portfolio_percent(
+            rdata,
+            list(factor_objects),
+            start_year=2002,
+            end_year=2023,
+            initial_aum=results.get('portfolio_values', [1])[0],
+            n_percent=n_percent,
+            include_bottom=include_bottom,
+            restrict_fossil_fuels=restrict_fossil_fuels
+        )
+
+        # Call the visualization with the same style as plot_portfolio_growth (named args)
+        plot_top_index_bottom(
+            years=percent_results['years'],
+            top_values=percent_results['top']['portfolio_values'],
+            bottom_values=percent_results.get('bottom', {}).get('portfolio_values', None),
+            selected_factors=list(factor_names),
+            restrict_fossil_fuels=restrict_fossil_fuels,
+            benchmark_returns=percent_results.get('benchmark_returns'),
+            top_label=f"Top {n_percent}%",
+            bottom_label=f"Bottom {n_percent}%",
+            initial_investment=percent_results.get('initial_aum', percent_results['top']['portfolio_values'][0])
+        )
 
 
 if __name__ == "__main__":

@@ -70,4 +70,31 @@ def get_factors(available_factors):
                 print(f"factor {name} is not available.")
     
     return factors
-    
+
+def get_top_bottom_plot_choice(default_n=10):
+    """
+    Ask the user (centralized input module) whether to plot Top n% / Bottom n%.
+    Returns a tuple: (plot_top_n: bool, n_percent: int, include_bottom: bool)
+    """
+    try:
+        ans = input("Plot top n% / bottom n% comparison? (y/n) [n]: ").strip().lower() or "n"
+    except Exception:
+        ans = "n"
+    plot_top_n = ans in ("y", "yes")
+    if not plot_top_n:
+        return False, default_n, False
+
+    try:
+        n_input = input(f"Enter percent n (e.g. 10 for top 10%) [{default_n}]: ").strip() or str(default_n)
+        n_percent = int(n_input)
+    except Exception:
+        n_percent = default_n
+
+    try:
+        inc = input("Include bottom n% as well? (y/n) [y]: ").strip().lower() or "y"
+    except Exception:
+        inc = "y"
+    include_bottom = inc in ("y", "yes")
+
+    return True, n_percent, include_bottom
+
