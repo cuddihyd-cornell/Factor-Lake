@@ -7,7 +7,7 @@ from calculate_holdings_percent import calculate_holdings_percent
 def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum, n_percent=10, include_bottom=True, verbosity=None, restrict_fossil_fuels=False):
     """
     Run parallel backtests for top n% and (optionally) bottom n% using same inputs.
-    Returns benchmark_returns as DECIMALS (e.g., 0.12 for 12%) and always includes keys:
+    Returns benchmark_returns as DECIMALS and always includes keys:
       'top', 'bottom' (if include_bottom), 'years', 'benchmark_returns', 'initial_aum'
     """
     aum_top = initial_aum
@@ -37,6 +37,7 @@ def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum
             per_factor_aum_top = aum_top / n_factors
             per_factor_aum_bottom = aum_bottom / n_factors
 
+        # Build portfolios for each factor - calculate_holdings_percent is robust to price NaNs
         for factor in factors:
             yearly_top.append(
                 calculate_holdings_percent(
@@ -92,9 +93,20 @@ def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum
             'portfolio_values': bottom_values
         }
 
+    # Safety: if bottom final AUM > top final AUM, swap them so output labeling is consistent
+    if include_bottom:
+        try:
+            top_final = float(result['top']['final_value'])
+            bottom_final = float(result['bottom']['final_value'])
+            if bottom_final > top_final:
+                # swap payloads
+                result['top'], result['bottom'] = result['bottom'], result['top']
+        except Exception:
+            # non-fatal: keep as-is if conversion fails
+            pass
+
     # Always provide these keys so callers (main/plotters) do not KeyError.
     result['years'] = years
-    # benchmark_returns are returned as decimals (e.g., 0.12 for 12%)
     result['benchmark_returns'] = benchmark_returns
     result['initial_aum'] = initial_aum
     return result

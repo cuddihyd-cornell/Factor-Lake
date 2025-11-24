@@ -10,6 +10,10 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
     Build a Portfolio selecting the top or bottom n_percent of securities by factor score.
     side: 'top' or 'bottom'
     n_percent: int (1-100)
+
+    Robustness:
+      - remove tickers with invalid/zero price BEFORE selecting
+      - ensure at least min_holdings (3) if universe allows, to avoid over-concentration
     """
     if restrict_fossil_fuels:
         industry_col = 'FactSet Industry'
@@ -31,7 +35,6 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
         meta = FACTOR_DOCS.get(factor_col, {})
         higher_is_better = meta.get('higher_is_better', True)
         normed = normalize_series(raw_series, higher_is_better=higher_is_better)
-        # Use index as ticker if stocks_df index contains tickers
         factor_values = normed.dropna().to_dict()
     else:
         factor_values = {
@@ -54,6 +57,10 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
     # sort by score descending (highest first)
     sorted_desc = sorted(valid_factor_values.items(), key=lambda x: x[1], reverse=True)
     count = max(1, int(round(len(sorted_desc) * float(n_percent) / 100.0)))
+
+    # avoid pathological concentration: prefer at least 3 holdings when possible
+    min_holdings = 3 if len(sorted_desc) >= 3 else 1
+    count = max(count, min_holdings)
 
     if side == 'top':
         selected = sorted_desc[:count]
