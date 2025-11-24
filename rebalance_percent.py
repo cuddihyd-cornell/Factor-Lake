@@ -63,6 +63,18 @@ def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum
                     )
                 )
 
+        # debug: output holdings count after building yearly_top and yearly_bottom (right before calculate_growth)
+        if verbosity and verbosity >= 2:
+            try:
+                def holdings_count(portfolio_list):
+                    return sum(1 for p in portfolio_list for _ in getattr(p, 'positions', []) ) if portfolio_list else 0
+                top_count = holdings_count(yearly_top)
+                bottom_count = holdings_count(yearly_bottom) if include_bottom else None
+                print(f"[debug] year={year} top_holdings_count={top_count} bottom_holdings_count={bottom_count}")
+            except Exception:
+                # best-effort diagnostic; ignore if Portfolio internals differ
+                pass
+
         growth_top, start_top, end_top = calculate_growth(yearly_top, next_market, market)
         top_returns.append(growth_top)
         aum_top = end_top
@@ -93,17 +105,8 @@ def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum
             'portfolio_values': bottom_values
         }
 
-    # Safety: if bottom final AUM > top final AUM, swap them so output labeling is consistent
-    if include_bottom:
-        try:
-            top_final = float(result['top']['final_value'])
-            bottom_final = float(result['bottom']['final_value'])
-            if bottom_final > top_final:
-                # swap payloads
-                result['top'], result['bottom'] = result['bottom'], result['top']
-        except Exception:
-            # non-fatal: keep as-is if conversion fails
-            pass
+    # Do NOT auto-swap top/bottom here. top == highest-scoring group, bottom == lowest-scoring.
+    # If you'd like diagnostics, use verbosity (handled above during per-year loop).
 
     # Always provide these keys so callers (main/plotters) do not KeyError.
     result['years'] = years
