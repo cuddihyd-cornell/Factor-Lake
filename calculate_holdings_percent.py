@@ -47,9 +47,12 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
     count = max(1, int(round(len(sorted_securities) * float(n_percent) / 100.0)))
 
     if side == 'top':
+        # highest scores
         selected = sorted_securities[:count]
     else:  # 'bottom'
-        selected = sorted_securities[-count:]
+        # explicitly take the lowest scores by sorting ascending and taking first `count`
+        sorted_asc = sorted(factor_values.items(), key=lambda x: x[1], reverse=False)
+        selected = sorted_asc[:count]
 
     equal_investment = aum / len(selected)
 

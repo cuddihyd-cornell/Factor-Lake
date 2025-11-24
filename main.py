@@ -107,6 +107,7 @@ def main():
             years=percent_results['years'],
             top_values=percent_results['top']['portfolio_values'],
             bottom_values=percent_results.get('bottom', {}).get('portfolio_values', None),
+            portfolio_values=results.get('portfolio_values'),
             selected_factors=list(factor_names),
             restrict_fossil_fuels=restrict_fossil_fuels,
             benchmark_returns=percent_results.get('benchmark_returns'),
