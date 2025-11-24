@@ -52,7 +52,7 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
     else:  # 'bottom'
         # explicitly take the lowest scores by sorting ascending and taking first `count`
         sorted_asc = sorted(factor_values.items(), key=lambda x: x[1], reverse=False)
-        selected = sorted_asc[:count]
+        selected = sorted_asc[:-count]
 
     equal_investment = aum / len(selected)
 
