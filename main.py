@@ -60,6 +60,10 @@ def main():
 
     ### Get user selections ###
     factors = get_factors(available_factors)
+
+    # Ask user whether to run top/bottom n% plot BEFORE verbosity so the flow pauses appropriately
+    plot_choice, n_percent, include_bottom = get_top_bottom_plot_choice(default_n=10)
+
     verbosity_level = get_verbosity_level()
 
     # Separate factor objects from their names for use downstream
@@ -86,7 +90,6 @@ def main():
     )
 
     # Top/Bottom n% plotting driven by user_input module
-    plot_choice, n_percent, include_bottom = get_top_bottom_plot_choice(default_n=10)
     if plot_choice:
         percent_results = rebalance_portfolio_percent(
             rdata,
