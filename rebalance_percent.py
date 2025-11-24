@@ -7,7 +7,8 @@ from calculate_holdings_percent import calculate_holdings_percent
 def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum, n_percent=10, include_bottom=True, verbosity=None, restrict_fossil_fuels=False):
     """
     Run parallel backtests for top n% and (optionally) bottom n% using same inputs.
-    Returns benchmark_returns as DECIMALS (e.g., 0.12 for 12%) to match plotting helpers.
+    Returns benchmark_returns as DECIMALS (e.g., 0.12 for 12%) and always includes keys:
+      'top', 'bottom' (if include_bottom), 'years', 'benchmark_returns', 'initial_aum'
     """
     aum_top = initial_aum
     aum_bottom = initial_aum
