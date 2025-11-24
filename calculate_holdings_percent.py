@@ -61,11 +61,21 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
         }
 
     # Filter out tickers without a valid positive price BEFORE selecting top/bottom
+    # ALSO filter out delisted/inactive tickers (common cause of artificial performance)
     valid_factor_values = {}
     for ticker, score in factor_values.items():
         price = market.get_price(ticker)
-        if price is not None and price > 0:
+        # Filter out delisted/inactive tickers and tickers with invalid prices
+        if (price is not None and price > 0 and 
+            not ticker.endswith('Q') and 
+            '.XX' not in ticker and
+            not ticker.endswith('.PK')):
             valid_factor_values[ticker] = score
+
+    if 'momentum' in factor_col.lower():
+        removed_delisted = len(factor_values) - len(valid_factor_values)
+        if removed_delisted > 0:
+            print(f"[DEBUG] Filtered out {removed_delisted} delisted/inactive tickers from {factor_col}")
 
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
     if len(valid_factor_values) == 0:
