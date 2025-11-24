@@ -5,7 +5,7 @@ from portfolio import Portfolio
 from factors_doc import FACTOR_DOCS
 from factor_utils import normalize_series
 
-def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', restrict_fossil_fuels=False):
+def calculate_holdings_percent(factor, aum, market, n_percent=10, side="top", restrict_fossil_fuels=False):
     """
     Build a Portfolio selecting the top or bottom n_percent of securities by factor score.
     side: 'top' or 'bottom'
@@ -17,16 +17,13 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
     """
     print(f"\n=== Calculating {side} {n_percent}% for {factor} (Year {market.t}) ===")
     
-    # Get next year's market to check forward survivorship
-    next_year = market.t + 1
-    try:
-        next_market = Market(next_year)
-        has_next_year = True
-        print(f"[SURVIVORSHIP] Checking forward survivorship for {next_year}")
-    except:
-        has_next_year = False
-        print(f"[SURVIVORSHIP] No next year data available, skipping survivorship check")
+    # Skip forward survivorship check for now - fix calculate_growth instead
+    has_next_year = False
+    print(f"[SURVIVORSHIP] Skipping survivorship check - will handle delisting in calculate_growth")
 
+    # Get the stocks dataframe for the current year
+    stocks_df = market.stocks_df if hasattr(market, 'stocks_df') else market.stocks
+    
     # filter for fossil fuels if enabled
     if restrict_fossil_fuels:
         fossil_fuel_sectors = {'Energy', 'Utilities'}  # Example fossil fuel sectors
@@ -36,25 +33,25 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
 
     # Get factor values for normalization
     factor_values = {}
-    if factor_col in stocks_df.columns:
-        raw_series = pd.to_numeric(stocks_df[factor_col], errors='coerce')
-        meta = FACTOR_DOCS.get(factor_col, {})
+    if factor in stocks_df.columns:
+        raw_series = pd.to_numeric(stocks_df[factor], errors='coerce')
+        meta = FACTOR_DOCS.get(factor, {})
         higher_is_better = meta.get('higher_is_better', True)
         
         # FORCE momentum factors to be higher_is_better=True (positive momentum = good)
-        if 'momentum' in factor_col.lower() or 'mom' in factor_col.lower():
+        if 'momentum' in factor.lower() or 'mom' in factor.lower():
             higher_is_better = True
-            print(f"[OVERRIDE] Forcing {factor_col} to higher_is_better=True")
+            print(f"[OVERRIDE] Forcing {factor} to higher_is_better=True")
             
         # Debug: print factor direction for momentum factors
-        if 'momentum' in factor_col.lower():
-            print(f"[DEBUG] Factor '{factor_col}': higher_is_better={higher_is_better}")
+        if 'momentum' in factor.lower():
+            print(f"[DEBUG] Factor '{factor}': higher_is_better={higher_is_better}")
             sample_raw = raw_series.dropna().head(5)
             print(f"[DEBUG] Sample raw values: {sample_raw.to_dict()}")
         
         normed = normalize_series(raw_series, higher_is_better=higher_is_better)
         
-        if 'momentum' in factor_col.lower():
+        if 'momentum' in factor.lower():
             sample_normed = normed.dropna().head(5)
             print(f"[DEBUG] Sample normalized values: {sample_normed.to_dict()}")
         
@@ -83,12 +80,12 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
                 
         valid_factor_values[ticker] = score
 
-    if 'momentum' in factor_col.lower():
+    if 'momentum' in factor.lower():
         removed_delisted = len(factor_values) - len(valid_factor_values) - survivorship_filtered
         if removed_delisted > 0:
-            print(f"[DEBUG] Filtered out {removed_delisted} delisted/inactive tickers from {factor_col}")
+            print(f"[DEBUG] Filtered out {removed_delisted} delisted/inactive tickers from {factor}")
         if survivorship_filtered > 0:
-            print(f"[DEBUG] Filtered out {survivorship_filtered} tickers due to forward survivorship from {factor_col}")
+            print(f"[DEBUG] Filtered out {survivorship_filtered} tickers due to forward survivorship from {factor}")
 
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
     if len(valid_factor_values) == 0:
@@ -110,18 +107,18 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
     
     count = min(min_holdings, len(sorted_desc))  # Don't exceed universe size
     
-    if 'momentum' in factor_col.lower():
+    if 'momentum' in factor.lower():
         print(f"[DEBUG] Universe size: {len(sorted_desc)}, Target {n_percent}%: {target_count}, Actual: {count}")
 
     if side == 'top':
         selected = sorted_desc[:count]
-        if 'momentum' in factor_col.lower():
+        if 'momentum' in factor.lower():
             print(f"[DEBUG] TOP selected: {[f'{t}:{s:.3f}' for t,s in selected[:5]]}")
     else:
         # explicit ascending sort and take first `count` to ensure true bottoms
         sorted_asc = sorted(valid_factor_values.items(), key=lambda x: x[1], reverse=False)
         selected = sorted_asc[:count]
-        if 'momentum' in factor_col.lower():
+        if 'momentum' in factor.lower():
             print(f"[DEBUG] BOTTOM selected: {[f'{t}:{s:.3f}' for t,s in selected[:5]]}")
 
     equal_investment = aum / len(selected)
