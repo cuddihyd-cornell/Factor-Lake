@@ -15,21 +15,27 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
       - remove tickers with invalid/zero price BEFORE selecting
       - ensure at least min_holdings (3) if universe allows, to avoid over-concentration
     """
+    print(f"\n=== Calculating {side} {n_percent}% for {factor} (Year {market.t}) ===")
+    
+    # Get next year's market to check forward survivorship
+    next_year = market.t + 1
+    try:
+        next_market = Market(next_year)
+        has_next_year = True
+        print(f"[SURVIVORSHIP] Checking forward survivorship for {next_year}")
+    except:
+        has_next_year = False
+        print(f"[SURVIVORSHIP] No next year data available, skipping survivorship check")
+
+    # filter for fossil fuels if enabled
     if restrict_fossil_fuels:
-        industry_col = 'FactSet Industry'
-        if industry_col in market.stocks.columns:
-            fossil_keywords = ['oil', 'gas', 'coal', 'energy', 'fossil']
-            series = market.stocks[industry_col].astype(str).str.lower()
-            keep_mask = series.apply(lambda x: not any(kw in x for kw in fossil_keywords) if pd.notna(x) else True)
-            stocks_df = market.stocks.loc[keep_mask]
-        else:
-            stocks_df = market.stocks
-    else:
-        stocks_df = market.stocks
+        fossil_fuel_sectors = {'Energy', 'Utilities'}  # Example fossil fuel sectors
+        if 'sector' in stocks_df.columns:
+            stocks_df = stocks_df[~stocks_df['sector'].isin(fossil_fuel_sectors)]
+            print(f"Fossil fuel filter kept {len(stocks_df)} rows.")
 
-    factor_col = getattr(factor, 'column_name', str(factor))
+    # Get factor values for normalization
     factor_values = {}
-
     if factor_col in stocks_df.columns:
         raw_series = pd.to_numeric(stocks_df[factor_col], errors='coerce')
         meta = FACTOR_DOCS.get(factor_col, {})
@@ -39,7 +45,7 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
         if 'momentum' in factor_col.lower() or 'mom' in factor_col.lower():
             higher_is_better = True
             print(f"[OVERRIDE] Forcing {factor_col} to higher_is_better=True")
-        
+            
         # Debug: print factor direction for momentum factors
         if 'momentum' in factor_col.lower():
             print(f"[DEBUG] Factor '{factor_col}': higher_is_better={higher_is_better}")
@@ -53,29 +59,36 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
             print(f"[DEBUG] Sample normalized values: {sample_normed.to_dict()}")
         
         factor_values = normed.dropna().to_dict()
-    else:
-        factor_values = {
-            ticker: factor.get(ticker, market)
-            for ticker in stocks_df.index
-            if isinstance(factor.get(ticker, market), (int, float))
-        }
 
-    # Filter out tickers without a valid positive price BEFORE selecting top/bottom
-    # ALSO filter out delisted/inactive tickers (common cause of artificial performance)
+    # Filter out tickers without a valid positive price AND forward survivorship check
     valid_factor_values = {}
+    survivorship_filtered = 0
+    
     for ticker, score in factor_values.items():
         price = market.get_price(ticker)
-        # Filter out delisted/inactive tickers and tickers with invalid prices
-        if (price is not None and price > 0 and 
-            not ticker.endswith('Q') and 
-            '.XX' not in ticker and
-            not ticker.endswith('.PK')):
-            valid_factor_values[ticker] = score
+        
+        # Basic filters: price validity and delisting patterns
+        if (price is None or price <= 0 or 
+            ticker.endswith('Q') or 
+            '.XX' in ticker or
+            ticker.endswith('.PK')):
+            continue
+            
+        # Forward survivorship check: ensure ticker survives to next year
+        if has_next_year:
+            next_price = next_market.get_price(ticker)
+            if next_price is None or next_price <= 0:
+                survivorship_filtered += 1
+                continue
+                
+        valid_factor_values[ticker] = score
 
     if 'momentum' in factor_col.lower():
-        removed_delisted = len(factor_values) - len(valid_factor_values)
+        removed_delisted = len(factor_values) - len(valid_factor_values) - survivorship_filtered
         if removed_delisted > 0:
             print(f"[DEBUG] Filtered out {removed_delisted} delisted/inactive tickers from {factor_col}")
+        if survivorship_filtered > 0:
+            print(f"[DEBUG] Filtered out {survivorship_filtered} tickers due to forward survivorship from {factor_col}")
 
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
     if len(valid_factor_values) == 0:
