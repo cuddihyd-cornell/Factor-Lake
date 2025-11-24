@@ -84,28 +84,32 @@ def calculate_holdings_percent(factor, aum, market, n_percent=10, side='top', re
     # sort by score descending (highest first)
     sorted_desc = sorted(valid_factor_values.items(), key=lambda x: x[1], reverse=True)
     
-    # Debug: show actual selection for momentum
-    if 'momentum' in factor_col.lower() and len(sorted_desc) >= 10:
-        print(f"[DEBUG] {side} selection for {factor_col}:")
-        print(f"[DEBUG] Highest scores: {sorted_desc[:3]}")
-        print(f"[DEBUG] Lowest scores: {sorted_desc[-3:]}")
+    # Calculate target count but enforce reasonable minimums to avoid concentration
+    target_count = max(1, int(round(len(sorted_desc) * float(n_percent) / 100.0)))
     
-    count = max(1, int(round(len(sorted_desc) * float(n_percent) / 100.0)))
-
-    # avoid pathological concentration: prefer at least 3 holdings when possible
-    min_holdings = 3 if len(sorted_desc) >= 3 else 1
-    count = max(count, min_holdings)
+    # Enforce minimum portfolio size to reduce concentration risk
+    if len(sorted_desc) >= 50:  # Only enforce if universe is big enough
+        min_holdings = max(10, target_count)  # At least 10 holdings
+    elif len(sorted_desc) >= 20:
+        min_holdings = max(5, target_count)   # At least 5 holdings
+    else:
+        min_holdings = max(3, target_count)   # At least 3 holdings
+    
+    count = min(min_holdings, len(sorted_desc))  # Don't exceed universe size
+    
+    if 'momentum' in factor_col.lower():
+        print(f"[DEBUG] Universe size: {len(sorted_desc)}, Target {n_percent}%: {target_count}, Actual: {count}")
 
     if side == 'top':
         selected = sorted_desc[:count]
         if 'momentum' in factor_col.lower():
-            print(f"[DEBUG] TOP selected: {[f'{t}:{s:.3f}' for t,s in selected[:3]]}")
+            print(f"[DEBUG] TOP selected: {[f'{t}:{s:.3f}' for t,s in selected[:5]]}")
     else:
         # explicit ascending sort and take first `count` to ensure true bottoms
         sorted_asc = sorted(valid_factor_values.items(), key=lambda x: x[1], reverse=False)
         selected = sorted_asc[:count]
         if 'momentum' in factor_col.lower():
-            print(f"[DEBUG] BOTTOM selected: {[f'{t}:{s:.3f}' for t,s in selected[:3]]}")
+            print(f"[DEBUG] BOTTOM selected: {[f'{t}:{s:.3f}' for t,s in selected[:5]]}")
 
     equal_investment = aum / len(selected)
 
