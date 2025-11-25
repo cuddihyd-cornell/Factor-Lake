@@ -151,22 +151,21 @@ def main():
                 top_vals = [raw_top_vals]
         percent_results['top']['portfolio_values'] = top_vals
 
-        percent_results.setdefault('bottom', {})
-        raw_bottom_vals = percent_results['bottom'].get('portfolio_values', None)
-        if raw_bottom_vals is None:
-            bottom_vals = None
-        elif isinstance(raw_bottom_vals, (pd.Series, np.ndarray)):
-            bottom_vals = list(raw_bottom_vals)
-        elif isinstance(raw_bottom_vals, str):
-            try:
-                bottom_vals = list(ast.literal_eval(raw_bottom_vals))
-            except Exception:
-                bottom_vals = [raw_bottom_vals]
-        else:
-            try:
+        # Handle bottom results safely
+        if 'bottom' not in results2:
+            print(f"[WARNING] results2 missing 'bottom' key. Available keys: {list(results2.keys())}")
+            results2['bottom'] = {'portfolio_values': [initial_aum]}  # Default fallback
+        
+        try:
+            raw_bottom_vals = results2['bottom']['portfolio_values']
+            if isinstance(raw_bottom_vals, (list, tuple)):
                 bottom_vals = list(raw_bottom_vals)
-            except Exception:
+            else:
                 bottom_vals = [raw_bottom_vals]
+        except Exception as e:
+            print(f"[WARNING] Error processing bottom portfolio_values: {e}")
+            bottom_vals = [initial_aum]  # Fallback
+            
         results2['bottom']['portfolio_values'] = bottom_vals
 
         # Ensure years: if missing or falsy, derive from top values; otherwise keep as provided
@@ -249,22 +248,21 @@ def main():
                 top_vals = [raw_top_vals]
         percent_results['top']['portfolio_values'] = top_vals
 
-        percent_results.setdefault('bottom', {})
-        raw_bottom_vals = percent_results['bottom'].get('portfolio_values', None)
-        if raw_bottom_vals is None:
-            bottom_vals = None
-        elif isinstance(raw_bottom_vals, (pd.Series, np.ndarray)):
-            bottom_vals = list(raw_bottom_vals)
-        elif isinstance(raw_bottom_vals, str):
-            try:
-                bottom_vals = list(ast.literal_eval(raw_bottom_vals))
-            except Exception:
-                bottom_vals = [raw_bottom_vals]
-        else:
-            try:
+        # Handle bottom results safely
+        if 'bottom' not in results2:
+            print(f"[WARNING] results2 missing 'bottom' key. Available keys: {list(results2.keys())}")
+            results2['bottom'] = {'portfolio_values': [initial_aum]}  # Default fallback
+        
+        try:
+            raw_bottom_vals = results2['bottom']['portfolio_values']
+            if isinstance(raw_bottom_vals, (list, tuple)):
                 bottom_vals = list(raw_bottom_vals)
-            except Exception:
+            else:
                 bottom_vals = [raw_bottom_vals]
+        except Exception as e:
+            print(f"[WARNING] Error processing bottom portfolio_values: {e}")
+            bottom_vals = [initial_aum]  # Fallback
+            
         percent_results['bottom']['portfolio_values'] = bottom_vals
 
         # Ensure years: if missing or falsy, derive from top values; otherwise keep as provided
@@ -298,6 +296,12 @@ def main():
             bottom_label=f"Bottom {n_percent}%",
             initial_investment=initial_aum
         )
+
+        # Debugging information for bottom results
+        print(f"[DEBUG] Bottom results keys: {list(results2.keys())}")
+        print(f"[DEBUG] Bottom results structure: {type(results2)}")
+        if 'bottom' in results2:
+            print(f"[DEBUG] Bottom data keys: {list(results2['bottom'].keys()) if isinstance(results2['bottom'], dict) else 'Not a dict'}")
 
 
 
