@@ -16,6 +16,8 @@ import ast
 from typing import cast
 
 def main():
+
+    initial_aum = 1.0  # Starting with $1 for normalization
     ### Ask about fossil fuel restriction first ###
     restrict_fossil_fuels = get_fossil_fuel_restriction()  # Prompt user (Yes/No)
 
