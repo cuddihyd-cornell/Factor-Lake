@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 from market_object import MarketObject
-from calculate_holdings import calculate_growth, get_benchmark_return
+from calculate_holdings import get_benchmark_return
 from calculate_holdings_percent import calculate_holdings_percent
+from calculate_holdings import calculate_growth_with_delisting
 
 def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum, n_percent=10, include_bottom=True, verbosity=None, restrict_fossil_fuels=False):
     """
@@ -75,13 +76,13 @@ def rebalance_portfolio_percent(data, factors, start_year, end_year, initial_aum
                 # best-effort diagnostic; ignore if Portfolio internals differ
                 pass
 
-        growth_top, start_top, end_top = calculate_growth(yearly_top, next_market, market)
+        growth_top, start_top, end_top = calculate_growth_with_delisting(yearly_top, next_market, market, verbosity)
         top_returns.append(growth_top)
         aum_top = end_top
         top_values.append(aum_top)
 
         if include_bottom:
-            growth_bottom, start_bottom, end_bottom = calculate_growth(yearly_bottom, next_market, market)
+            growth_bottom, start_bottom, end_bottom = calculate_growth_with_delisting(yearly_bottom, next_market, market, verbosity)
             bottom_returns.append(growth_bottom)
             aum_bottom = end_bottom
             bottom_values.append(aum_bottom)

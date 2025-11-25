@@ -71,6 +71,35 @@ def calculate_growth(portfolio, next_market, current_market, verbosity=0):
     growth = (total_end_value - total_start_value) / total_start_value if total_start_value else 0
     return growth, total_start_value, total_end_value
 
+def calculate_growth_with_delisting(portfolio, next_market, current_market, verbosity=0):
+    """Calculate portfolio growth with proper delisting handling (delisted = -100% loss)"""
+    total_start_value = sum(p.present_value(current_market) for p in portfolio)
+    total_end_value = 0
+    delisted_count = 0
+    
+    for p in portfolio:
+        for inv in p.investments:
+            ticker = inv["ticker"]
+            end_price = next_market.get_price(ticker)
+            
+            if end_price is not None and end_price > 0:
+                # Stock still trading normally
+                total_end_value += inv["number_of_shares"] * end_price
+            else:
+                # Stock delisted/bankrupt = TOTAL LOSS
+                entry_price = current_market.get_price(ticker)
+                delisted_count += 1
+                if verbosity >= 1:
+                    entry_value = inv["number_of_shares"] * entry_price if entry_price else 0
+                    print(f"[DELISTING] {ticker}: Total loss - position worth ${entry_value:.2f} now $0.00")
+                # Don't add anything to total_end_value = 100% loss on this position
+                
+    if verbosity >= 1 and delisted_count > 0:
+        print(f"[SUMMARY] {delisted_count} positions delisted this period")
+        
+    growth = (total_end_value - total_start_value) / total_start_value if total_start_value else 0
+    return growth, total_start_value, total_end_value
+
 def get_benchmark_return(year):
     benchmark_data = {
         2002: 34.62, 2003: 17.48, 2004: 16.56, 2005: 8.65, 2006: 11.01,
@@ -126,6 +155,7 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
         if year < end_year:
             next_market = MarketObject(data.loc[data['Year'] == year + 1], year + 1)
             growth, total_start_value, total_end_value = calculate_growth(yearly_portfolio, next_market, market, verbosity)
+            growth, total_start_value, total_end_value = calculate_growth_with_delisting(yearly_portfolio, next_market, market, verbosity)
 
             if verbosity and verbosity >= 2:
                 print(f"Year {year} to {year + 1}: Growth: {growth:.2%}, Start Value: ${total_start_value:.2f}, End Value: ${total_end_value:.2f}")

@@ -291,20 +291,6 @@ def main():
         )
 
 
-def calculate_growth(market, ticker, entry_price):
-    """Calculate growth rate, handling delisted stocks as total losses"""
-    current_price = market.get_price(ticker)
-    
-    # Handle delisted/bankrupt stocks as total losses
-    if current_price is None or current_price <= 0:
-        print(f"[DELISTING] {ticker}: Total loss (delisted/bankrupt) - was ${entry_price:.2f}, now $0.00")
-        return -1.0  # -100% loss
-    
-    growth = (current_price - entry_price) / entry_price
-    if abs(growth) > 0.1:  # Log significant moves for debugging
-        print(f"[GROWTH] {ticker}: ${entry_price:.2f} -> ${current_price:.2f} = {growth:.1%}")
-    return growth
-
 
 if __name__ == "__main__":
     main()
