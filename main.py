@@ -299,6 +299,47 @@ def main():
             initial_investment=initial_aum
         )
 
+        # Validate and fix results2 structure
+        default_aum = 1.0
+        
+        if not isinstance(results2, dict):
+            print(f"[ERROR] results2 is not a dict: {type(results2)}")
+            results2 = {}
+        
+        # Ensure 'top' key exists
+        if 'top' not in results2:
+            print(f"[WARNING] results2 missing 'top' key. Available keys: {list(results2.keys())}")
+            results2['top'] = {'portfolio_values': [default_aum]}
+        
+        # Ensure 'bottom' key exists  
+        if 'bottom' not in results2:
+            print(f"[WARNING] results2 missing 'bottom' key. Available keys: {list(results2.keys())}")
+            results2['bottom'] = {'portfolio_values': [default_aum]}
+        
+        # Ensure nested structure exists
+        if not isinstance(results2['top'], dict):
+            results2['top'] = {'portfolio_values': [default_aum]}
+        if not isinstance(results2['bottom'], dict):
+            results2['bottom'] = {'portfolio_values': [default_aum]}
+            
+        if 'portfolio_values' not in results2['top']:
+            results2['top']['portfolio_values'] = [default_aum]
+        if 'portfolio_values' not in results2['bottom']:
+            results2['bottom']['portfolio_values'] = [default_aum]
+
+        plot_top_index_bottom(
+            years=results2.get('years', []),
+            top_values=results2['top'].get('portfolio_values', []),
+            bottom_values=results2['bottom'].get('portfolio_values', []),
+            portfolio_values=results2.get('portfolio_values'),
+            selected_factors=list(factor_names),  # Changed from 'factor' to 'selected_factors'
+            restrict_fossil_fuels=restrict_fossil_fuels,
+            benchmark_returns=results2.get('benchmark_returns', []),
+            top_label=f"Top {n_percent}%",
+            bottom_label=f"Bottom {n_percent}%",
+            initial_investment=initial_aum
+        )
+
         # Debugging information for bottom results
         print(f"[DEBUG] Bottom results keys: {list(results2.keys())}")
         print(f"[DEBUG] Bottom results structure: {type(results2)}")
