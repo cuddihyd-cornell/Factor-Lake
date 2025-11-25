@@ -11,6 +11,7 @@ from supabase_input import get_supabase_preference, get_data_loading_verbosity
 from sector_selection import get_sector_selection
 from Visualizations.portfolio_growth_plot import plot_portfolio_growth
 from Visualizations.portfolio_top_bottom_plot import plot_top_index_bottom
+from user_input import get_top_bottom_plot_choice
 from rebalance_percent import rebalance_portfolio_percent
 import ast
 from typing import cast
@@ -327,17 +328,30 @@ def main():
         if 'portfolio_values' not in results2['bottom']:
             results2['bottom']['portfolio_values'] = [default_aum]
 
+        # plot_top_index_bottom(
+        #     years=results2.get('years', []),
+        #     top_values=results2.get('portfolio_values', []),  # Use portfolio_values directly
+        #     bottom_values=results2.get('portfolio_values', []),  # Same data for now
+        #     portfolio_values=results2.get('portfolio_values', []),
+        #     selected_factors=list(factor_names),
+        #     restrict_fossil_fuels=restrict_fossil_fuels,
+        #     benchmark_returns=results2.get('benchmark_returns', []),
+        #     top_label=f"Top {get_top_bottom_plot_choice}%",
+        #     bottom_label=f"Bottom {get_top_bottom_plot_choice}%",
+        #     initial_investment=1  # matches initial_aum=1
+        # )
+
         plot_top_index_bottom(
-            years=results2.get('years', []),
-            top_values=results2.get('portfolio_values', []),  # Use portfolio_values directly
-            bottom_values=results2.get('portfolio_values', []),  # Same data for now
-            portfolio_values=results2.get('portfolio_values', []),
+            years=percent_results.get('years', []),
+            top_values=percent_results['top'].get('portfolio_values', []),      # TOP performers
+            bottom_values=percent_results['bottom'].get('portfolio_values', []), # BOTTOM performers
+            portfolio_values=results2.get('portfolio_values', []),               # Original combined portfolio
             selected_factors=list(factor_names),
             restrict_fossil_fuels=restrict_fossil_fuels,
             benchmark_returns=results2.get('benchmark_returns', []),
-            top_label=f"Portfolio with Delisting",
-            bottom_label=f"Portfolio with Delisting",
-            initial_investment=1  # matches initial_aum=1
+            top_label=f"Top {n_percent}% with Delisting Fix",
+            bottom_label=f"Bottom {n_percent}% with Delisting Fix", 
+            initial_investment=1
         )
 
         # Debugging information for bottom results
