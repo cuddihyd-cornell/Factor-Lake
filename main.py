@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from market_object import load_data
 from calculate_holdings import rebalance_portfolio
+from calculate_holdings import rebalance_portfolio_with_delisting
 from user_input import get_factors, get_top_bottom_plot_choice
 from verbosity_options import get_verbosity_level
 from fossil_fuel_restriction import get_fossil_fuel_restriction
@@ -94,6 +95,14 @@ def main():
         verbosity=verbosity_level,
         restrict_fossil_fuels=restrict_fossil_fuels
     )
+
+    results2 = rebalance_portfolio_with_delisting(
+        rdata, list(factor_objects),
+        start_year=2002, end_year=2023,
+        initial_aum=1,
+        verbosity=verbosity_level,
+        restrict_fossil_fuels=restrict_fossil_fuels
+    )
     
     # Plot portfolio growth
     plot_portfolio_growth(
@@ -158,20 +167,20 @@ def main():
                 bottom_vals = list(raw_bottom_vals)
             except Exception:
                 bottom_vals = [raw_bottom_vals]
-        percent_results['bottom']['portfolio_values'] = bottom_vals
+        results2['bottom']['portfolio_values'] = bottom_vals
 
         # Ensure years: if missing or falsy, derive from top values; otherwise keep as provided
-        if not percent_results.get('years'):
+        if not results2.get('years'):
             if top_vals:
-                percent_results['years'] = list(range(start_year_for_percent, start_year_for_percent + len(top_vals)))
+                results2['years'] = list(range(start_year_for_percent, start_year_for_percent + len(top_vals)))
             else:
-                percent_results['years'] = []
+                results2['years'] = []
 
         # Ensure benchmark_returns exists (may be used by plotting); default to empty list
-        percent_results.setdefault('benchmark_returns', [])
+        results2.setdefault('benchmark_returns', [])
 
         # Determine a safe initial investment value for plotting
-        initial_aum = percent_results.get('initial_aum')
+        initial_aum = results2.get('initial_aum')
         if initial_aum is None:
             if top_vals:
                 initial_aum = top_vals[0]
@@ -180,13 +189,13 @@ def main():
 
         # Call the visualization with the same style as plot_portfolio_growth (named args)
         plot_top_index_bottom(
-            years=percent_results.get('years', []),
-            top_values=percent_results['top'].get('portfolio_values', []),
-            bottom_values=percent_results['bottom'].get('portfolio_values', None),
-            portfolio_values=results.get('portfolio_values'),
+            years=results2.get('years', []),
+            top_values=results2['top'].get('portfolio_values', []),
+            bottom_values=results2['bottom'].get('portfolio_values', None),
+            portfolio_values=results2.get('portfolio_values'),
             selected_factors=list(factor_names),
             restrict_fossil_fuels=restrict_fossil_fuels,
-            benchmark_returns=percent_results.get('benchmark_returns', []),
+            benchmark_returns=results2.get('benchmark_returns', []),
             top_label=f"Top {n_percent}%",
             bottom_label=f"Bottom {n_percent}%",
             initial_investment=initial_aum
@@ -261,30 +270,30 @@ def main():
         # Ensure years: if missing or falsy, derive from top values; otherwise keep as provided
         if not percent_results.get('years'):
             if top_vals:
-                percent_results['years'] = list(range(start_year_for_percent, start_year_for_percent + len(top_vals)))
+                results2['years'] = list(range(start_year_for_percent, start_year_for_percent + len(top_vals)))
             else:
-                percent_results['years'] = []
+                results2['years'] = []
 
         # Ensure benchmark_returns exists (may be used by plotting); default to empty list
-        percent_results.setdefault('benchmark_returns', [])
+        results2.setdefault('benchmark_returns', [])
 
         # Determine a safe initial investment value for plotting
-        initial_aum = percent_results.get('initial_aum')
+        initial_aum = results2.get('initial_aum')
         if initial_aum is None:
             if top_vals:
                 initial_aum = top_vals[0]
             else:
-                initial_aum = results.get('portfolio_values', [1])[0]
+                initial_aum = results2.get('portfolio_values', [1])[0]
 
         # Call the visualization with the same style as plot_portfolio_growth (named args)
         plot_top_index_bottom(
-            years=percent_results.get('years', []),
-            top_values=percent_results['top'].get('portfolio_values', []),
-            bottom_values=percent_results['bottom'].get('portfolio_values', None),
-            portfolio_values=results.get('portfolio_values'),
+            years=results2.get('years', []),
+            top_values=results2['top'].get('portfolio_values', []),
+            bottom_values=results2['bottom'].get('portfolio_values', None),
+            portfolio_values=results2.get('portfolio_values'),
             selected_factors=list(factor_names),
             restrict_fossil_fuels=restrict_fossil_fuels,
-            benchmark_returns=percent_results.get('benchmark_returns', []),
+            benchmark_returns=results2.get('benchmark_returns', []),
             top_label=f"Top {n_percent}%",
             bottom_label=f"Bottom {n_percent}%",
             initial_investment=initial_aum
