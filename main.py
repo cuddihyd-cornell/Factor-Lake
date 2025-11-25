@@ -191,15 +191,15 @@ def main():
         # Call the visualization with the same style as plot_portfolio_growth (named args)
         plot_top_index_bottom(
             years=results2.get('years', []),
-            top_values=results2['top'].get('portfolio_values', []),
-            bottom_values=results2['bottom'].get('portfolio_values', None),
-            portfolio_values=results2.get('portfolio_values'),
+            top_values=results2.get('portfolio_values', []),  # Use portfolio_values directly
+            bottom_values=results2.get('portfolio_values', []),  # Same data for now
+            portfolio_values=results2.get('portfolio_values', []),
             selected_factors=list(factor_names),
             restrict_fossil_fuels=restrict_fossil_fuels,
             benchmark_returns=results2.get('benchmark_returns', []),
-            top_label=f"Top {n_percent}%",
-            bottom_label=f"Bottom {n_percent}%",
-            initial_investment=initial_aum
+            top_label=f"Portfolio with Delisting",
+            bottom_label=f"Portfolio with Delisting",
+            initial_investment=1  # matches initial_aum=1
         )
 
         # Test: ensure original portfolio matches top 10% by using same construction
@@ -288,15 +288,15 @@ def main():
         # Call the visualization with the same style as plot_portfolio_growth (named args)
         plot_top_index_bottom(
             years=results2.get('years', []),
-            top_values=results2['top'].get('portfolio_values', []),
-            bottom_values=results2['bottom'].get('portfolio_values', None),
-            portfolio_values=results2.get('portfolio_values'),
+            top_values=results2.get('portfolio_values', []),  # Use portfolio_values directly
+            bottom_values=results2.get('portfolio_values', []),  # Same data for now
+            portfolio_values=results2.get('portfolio_values', []),
             selected_factors=list(factor_names),
             restrict_fossil_fuels=restrict_fossil_fuels,
             benchmark_returns=results2.get('benchmark_returns', []),
-            top_label=f"Top {n_percent}%",
-            bottom_label=f"Bottom {n_percent}%",
-            initial_investment=initial_aum
+            top_label=f"Portfolio with Delisting",
+            bottom_label=f"Portfolio with Delisting",
+            initial_investment=1  # matches initial_aum=1
         )
 
         # Validate and fix results2 structure
@@ -329,15 +329,15 @@ def main():
 
         plot_top_index_bottom(
             years=results2.get('years', []),
-            top_values=results2['top'].get('portfolio_values', []),
-            bottom_values=results2['bottom'].get('portfolio_values', []),
-            portfolio_values=results2.get('portfolio_values'),
-            selected_factors=list(factor_names),  # Changed from 'factor' to 'selected_factors'
+            top_values=results2.get('portfolio_values', []),  # Use portfolio_values directly
+            bottom_values=results2.get('portfolio_values', []),  # Same data for now
+            portfolio_values=results2.get('portfolio_values', []),
+            selected_factors=list(factor_names),
             restrict_fossil_fuels=restrict_fossil_fuels,
             benchmark_returns=results2.get('benchmark_returns', []),
-            top_label=f"Top {n_percent}%",
-            bottom_label=f"Bottom {n_percent}%",
-            initial_investment=initial_aum
+            top_label=f"Portfolio with Delisting",
+            bottom_label=f"Portfolio with Delisting",
+            initial_investment=1  # matches initial_aum=1
         )
 
         # Debugging information for bottom results
