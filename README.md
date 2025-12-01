@@ -1,6 +1,6 @@
 # Factor-Lake
 
-An interactive factor-investing toolkit with a clean Streamlit UI, Supabase data integration, and a pytest test suite. The codebase uses a modern `src/` layout and a professional, emoji-free UX.
+An interactive factor-investing toolkit with a clean Streamlit UI, Supabase data integration, and a pytest test suite. The codebase uses a modern `src/` layout and a clean UX.
 
 ## Use the App
 
@@ -15,9 +15,8 @@ password = "your-strong-password"
 ## Quick Start (Local)
 
 ```pwsh
-git clone https://github.com/cuddihyd-cornell/Factor-Lake.git
+git clone https://github.com/cornell-sysen-5900/Factor-Lake.git
 cd Factor-Lake
-git checkout revamped_ux
 pip install -r requirements.txt
 python -m streamlit run .\app\streamlit_app.py
 ```
@@ -74,14 +73,14 @@ from src.calculate_holdings import rebalance_portfolio
 
 ## Deploying to Streamlit Community Cloud
 
-1. Connect the repo and select the `revamped_ux` branch.
+1. Connect the repo and select the `main` branch.
 2. In “Settings → Secrets”, add:
 	- `password = "<your-strong-password>"`
 3. Deploy. Share the app URL—users only need the link.
 
 ## Contributing
 
-1. Create a feature branch from `revamped_ux`.
+1. Create a feature branch from `main`.
 2. Add/modify tests in `UnitTests/` or `tests/`.
 3. Run `pytest -q` to verify.
 4. Submit a PR describing UX/data impacts.
