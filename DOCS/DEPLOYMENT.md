@@ -50,8 +50,8 @@ This guide walks you through deploying the Factor-Lake app to Streamlit Communit
 
 1. Click **"New app"** button
 2. Fill in the deployment form:
-   - **Repository:** `cuddihyd-cornell/Factor-Lake`
-   - **Branch:** `revamped_ux`
+   - **Repository:** `https://github.com/cornell-sysen-5900/Factor-Lake.git`
+   - **Branch:** `main`
    - **Main file path:** `app/streamlit_app.py`
    - **App URL:** Choose a custom name (e.g., `cornell-factor-lake`)
 
@@ -145,11 +145,12 @@ Before deploying, test the password protection locally:
 
 ---
 
-## 📊 Using Google Drive Excel Sheets
+## 📊 Using Google Drive Excel Sheets - *(Currently Not Implemented as of Dec 1, 2025)*
 *Still working on this aspect but eventually...*
 
-**Yes, Google Drive still works!** Students can:
+~~Yes, Google Drive still works!~~
 
+Students can:
 1. Upload their Excel file to Google Drive
 2. Get the shareable link
 3. Paste it into the app (when using local Excel option)
@@ -169,7 +170,7 @@ Streamlit Cloud automatically deploys when you push to GitHub:
 
 1. Make changes to your code locally
 2. Test with `streamlit run app/streamlit_app.py`
-3. Commit and push to `revamped_ux` branch:
+3. Commit and push to `main` branch:
    ```bash
    git add .
    git commit -m "Update feature X"

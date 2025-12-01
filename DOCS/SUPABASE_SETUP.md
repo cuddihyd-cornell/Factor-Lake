@@ -21,6 +21,7 @@ Your credentials are now configured in **three places**:
 - No code changes needed when running locally
 
 ### 3. **Google Colab** (`colab_setup.ipynb`)
+ *Now Obsolete as of Dec 1, 2025*
 - Credentials are set directly in the notebook
 - Ready to use when deployed to Colab
 
