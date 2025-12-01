@@ -71,12 +71,9 @@ from src.calculate_holdings import rebalance_portfolio
 - `DOCS/SUPABASE_SETUP.md` – Environment & table notes
 - `DOCS/REORGANIZATION_SUMMARY.md` – Refactor rationale
 
-## Deploying to Streamlit Community Cloud
+## Deployment
 
-1. Connect the repo and select the `main` branch.
-2. In “Settings → Secrets”, add:
-	- `password = "<your-strong-password>"`
-3. Deploy. Share the app URL—users only need the link.
+For detailed deployment instructions (Streamlit Community Cloud, secrets management, and troubleshooting), see `DOCS/DEPLOYMENT.md`.
 
 ## Contributing
 
