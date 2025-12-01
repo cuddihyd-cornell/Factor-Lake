@@ -89,8 +89,7 @@ def load_data(restrict_fossil_fuels=False, use_supabase=True, table_name='Full P
             
         except Exception as e:
             print(f"Error loading from Supabase: {e}")
-            print("Falling back to Excel file...")
-            use_supabase = False
+            raise RuntimeError(f"Failed to load data from Supabase. Please check your Supabase configuration and secrets. Error: {e}")
     
     if not use_supabase:
         # Fallback to local file (Excel or CSV). Accepts a data_path (CSV/Excel path OR file-like object).
@@ -371,14 +370,15 @@ class MarketObject():
             "Next-Year's Return %", "Next-Year's Active Return %"
         ]
         # Keep Ticker-Region so we can index uniquely when present
-        keep_cols = ['Ticker-Region', 'Ticker', 'Ending Price', 'Year', '6-Mo Momentum %', 'FactSet Industry'] + available_factors
+        # Include Market Capitalization for cap-weighted portfolios
+        keep_cols = ['Ticker-Region', 'Ticker', 'Ending Price', 'Year', '6-Mo Momentum %', 'FactSet Industry', 'Market Capitalization'] + available_factors
 
         # Filter and clean data
         data = data[[col for col in keep_cols if col in data.columns]].copy()
         data.replace({'--': None, 'N/A': None, '#N/A': None, '': None}, inplace=True)
         
         # Convert numeric columns to proper numeric types
-        numeric_columns = ['Ending Price'] + [col for col in available_factors if col in data.columns]
+        numeric_columns = ['Ending Price', 'Market Capitalization'] + [col for col in available_factors if col in data.columns]
         for col in numeric_columns:
             if col in data.columns:
                 data[col] = pd.to_numeric(data[col], errors='coerce')

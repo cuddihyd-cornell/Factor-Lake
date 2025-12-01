@@ -1,5 +1,51 @@
 __pycache__/
 *.pyc
 scripts/extract_functions.py
-.streamlit/secrets.toml
+
+# Environment variables (IMPORTANT - contains secrets!)
+.env
+.env.local
 app/.env
+
+# Streamlit local config & secrets
+.streamlit/
+*.streamlit/
+.streamlit/secrets.toml
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Data files (avoid committing large raw data)
+*.xlsx
+*.csv
+data/
+
+# Jupyter / Colab checkpoints
+.ipynb_checkpoints/
+
+# Mypy / pytest caches
+.mypy_cache/
+.pytest_cache/
+
+# Build artifacts (if any appear later)
+dist/
+build/
+*.egg-info/

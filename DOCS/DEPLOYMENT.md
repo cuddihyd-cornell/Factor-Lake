@@ -1,6 +1,6 @@
 # 🚀 Deployment Guide - Streamlit Community Cloud
 
-This guide walks you through deploying the Factor-Lake app to Streamlit Community Cloud (100% free!) so Cornell students can access it via a simple URL.
+This guide walks you through deploying the Factor-Lake app to Streamlit Community Cloud (100% free!) so Cornell students can access it via a simple URL. (This is for SYSEN 5900 - Software Systems Engineering in Quant Finance students)
 
 ---
 
@@ -43,6 +43,8 @@ This guide walks you through deploying the Factor-Lake app to Streamlit Communit
 1. Go to [share.streamlit.io](https://share.streamlit.io/)
 2. Click **"Sign up"** and connect your GitHub account
 3. Authorize Streamlit to access your repositories
+4. Secrets Configruation moves into the streamlit community UI
+
 
 ### B. Deploy Your App
 
@@ -144,6 +146,7 @@ Before deploying, test the password protection locally:
 ---
 
 ## 📊 Using Google Drive Excel Sheets
+*Still working on this aspect but eventually...*
 
 **Yes, Google Drive still works!** Students can:
 

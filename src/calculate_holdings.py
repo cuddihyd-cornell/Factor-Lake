@@ -5,7 +5,7 @@ import pandas as pd
 from .factors_doc import FACTOR_DOCS
 from .factor_utils import normalize_series
 
-def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
+def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False, top_pct=10, which='top', use_market_cap_weight=False):
     # Apply sector restrictions if enabled
     if restrict_fossil_fuels:
         industry_col = 'FactSet Industry'
@@ -52,18 +52,86 @@ def calculate_holdings(factor, aum, market, restrict_fossil_fuels=False):
     
     sorted_securities = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)
 
-    # Select the top 10% of securities
-    top_10_percent = sorted_securities[:max(1, len(sorted_securities) // 10)]
+    # Select the top or bottom `top_pct`% of securities (default 10%)
+    import math
+    n_select = max(1, math.floor(len(sorted_securities) * (top_pct / 100.0))) if sorted_securities else 0
+    if n_select == 0:
+        selected = []
+    else:
+        if which == 'top':
+            selected = sorted_securities[:n_select]
+        else:
+            # bottom: take the weakest n_select securities
+            selected = sorted_securities[-n_select:]
 
     # Calculate number of shares for each selected security
     portfolio_new = Portfolio(name=f"Portfolio_{market.t}")
-    equal_investment = aum / len(top_10_percent)
+    
+    if use_market_cap_weight:
+        # Market capitalization-based weighting (similar to Russell 2000)
+        # Collect market cap and price for each selected ticker, then allocate
+        market_caps = {}
+        prices = {}
+        for ticker, _ in selected:
+            # Try to get market cap from the data
+            if 'Market Capitalization' in market.stocks.columns:
+                try:
+                    market_cap = market.stocks.loc[ticker, 'Market Capitalization']
+                    if isinstance(market_cap, (pd.Series, np.ndarray)):
+                        market_cap = market_cap.iloc[0] if len(market_cap) > 0 else None
+                    if pd.notna(market_cap) and market_cap > 0:
+                        market_caps[ticker] = float(market_cap)
+                except (KeyError, IndexError):
+                    pass
+            # also capture entry price availability
+            price = market.get_price(ticker)
+            if price is not None and price > 0:
+                prices[ticker] = price
 
-    for ticker, _ in top_10_percent:
-        price = market.get_price(ticker)
-        if price is not None and price > 0:
-            shares = equal_investment / price
-            portfolio_new.add_investment(ticker, shares)
+        # If we have market caps and at least one valid price, use them for weighting
+        valid_caps = {t: c for t, c in market_caps.items() if t in prices}
+        if valid_caps:
+            total_market_cap = sum(valid_caps.values())
+            for ticker, cap in valid_caps.items():
+                # Weight by market cap: (ticker_market_cap / total_market_cap) * AUM
+                weight = cap / total_market_cap if total_market_cap > 0 else 0
+                dollar_investment = weight * aum
+                price = prices.get(ticker)
+                if price is not None and price > 0 and dollar_investment > 0:
+                    shares = dollar_investment / price
+                    portfolio_new.add_investment(ticker, shares)
+            # If for some reason no shares were added (e.g., rounding), fallback to equal among priced tickers
+            if not portfolio_new.investments and prices:
+                valid_tickers = list(prices.keys())
+                equal_investment = aum / len(valid_tickers)
+                for t in valid_tickers:
+                    shares = equal_investment / prices[t]
+                    portfolio_new.add_investment(t, shares)
+        else:
+            # Fallback to equal weighting among tickers that have valid prices
+            valid_tickers = [t for t, _ in selected if market.get_price(t) is not None and market.get_price(t) > 0]
+            if not valid_tickers:
+                print(f"Warning: No valid priced tickers for year {market.t}; returning empty portfolio.")
+            else:
+                equal_investment = aum / len(valid_tickers)
+                for ticker in valid_tickers:
+                    price = market.get_price(ticker)
+                    if price is not None and price > 0:
+                        shares = equal_investment / price
+                        portfolio_new.add_investment(ticker, shares)
+    else:
+        # Equal dollar weighting (allocate only to tickers with valid entry prices)
+        valid_tickers = [t for t, _ in selected if market.get_price(t) is not None and market.get_price(t) > 0]
+        if not valid_tickers and selected:
+            # nothing priced; warn and return empty portfolio
+            print(f"Warning: No valid priced tickers for equal-weighting in year {market.t}; returning empty portfolio.")
+        else:
+            equal_investment = aum / len(valid_tickers) if valid_tickers else 0
+            for ticker in valid_tickers:
+                price = market.get_price(ticker)
+                if price is not None and price > 0:
+                    shares = equal_investment / price
+                    portfolio_new.add_investment(ticker, shares)
 
     return portfolio_new
 
@@ -93,12 +161,15 @@ def calculate_growth(portfolio, next_market, current_market, verbosity=0):
     return growth, total_start_value, total_end_value
 
 
-def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=None, restrict_fossil_fuels=False):
+def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbosity=0, restrict_fossil_fuels=False, top_pct=10, which='top', use_market_cap_weight=False):
     aum = initial_aum
     years = [start_year] # Start with the initial year
     portfolio_returns = []  # Store yearly returns for Information Ratio
     benchmark_returns = []  # Store benchmark returns for comparison
     portfolio_values = [aum]  # track total AUM over time
+    
+    # Ensure verbosity is not None
+    verbosity = 0 if verbosity is None else verbosity
     
     # Risk-free rate lookup from FRED (October 1)
     risk_free_rate_lookup = {
@@ -119,7 +190,10 @@ def rebalance_portfolio(data, factors, start_year, end_year, initial_aum, verbos
                 factor=factor,
                 aum=aum / len(factors),
                 market=market,
-                restrict_fossil_fuels=restrict_fossil_fuels
+                restrict_fossil_fuels=restrict_fossil_fuels,
+                top_pct=top_pct,
+                which=which,
+                use_market_cap_weight=use_market_cap_weight
             )
             yearly_portfolio.append(factor_portfolio)
 

@@ -39,7 +39,7 @@ def get_factors(available_factors):
                 break
     
         name = available_factors[selected_factor - 1]
-        # Python 3.9 compatible mapping (replaces match-case)
+        # Python 3.9 compatible mapping (no match-case)
         if name == "ROE using 9/30 Data":
             factors.append((factor_function.ROE(), name))
         elif name == "ROA using 9/30 Data":
