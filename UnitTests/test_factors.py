@@ -5,13 +5,13 @@ Tests factor classes and their data retrieval
 import pytest
 import pandas as pd
 import numpy as np
-from factor_function import (
+from src.factor_function import (
     Factors, Momentum6m, Momentum12m, Momentum1m,
     ROE, ROA, P2B, NextFYrEarns, OneYrPriceVol,
     AccrualsAssets, ROAPercentage, OneYrAssetGrowth,
     OneYrCapEXGrowth, BookPrice, NextYrReturn, NextYrActiveReturn
 )
-from market_object import MarketObject
+from src.market_object import MarketObject, load_data
 
 
 class TestFactorsBase:
@@ -227,7 +227,6 @@ class TestFactorIntegration:
     @pytest.fixture
     def real_market(self):
         """Create a market with real data"""
-        from market_object import load_data
         data = load_data(use_supabase=True)
         year_data = data[data['Year'] == 2022]
         if len(year_data) > 0:

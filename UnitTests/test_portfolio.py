@@ -4,8 +4,8 @@ Tests portfolio creation, management, and calculations
 """
 import pytest
 import pandas as pd
-from portfolio import Portfolio
-from market_object import MarketObject
+from src.portfolio import Portfolio
+from src.market_object import MarketObject
 
 
 class TestPortfolioCreation:
